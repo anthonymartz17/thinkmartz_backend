@@ -1,0 +1,35 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Go build artifacts
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace / vendor
+vendor/
+go.work
+go.work.sum
+
+# Air (hot reload) tmp output
+tmp/
+.air.toml.bak
+
+# Docker
+docker-compose.override.yml
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Editor cruft
+.idea/
+*.swp
+*.swo
