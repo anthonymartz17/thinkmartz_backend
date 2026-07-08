@@ -1,0 +1,23 @@
+version: "2"
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - errcheck # unhandled errors
+    - staticcheck # deep correctness checks (nil derefs, wrong format verbs, impossible conditions)
+    - revive # style/idiom enforcement (successor to golint)
+    - govet # standard go vet checks
+    - gosec # security footguns (SQL injection risk, hardcoded secrets, weak crypto)
+    - bodyclose # unclosed HTTP response bodies
+    - ineffassign # assigned-then-overwritten-before-read values
+    - unused # unused package-level declarations (funcs, types, consts, fields)
+
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gosec
