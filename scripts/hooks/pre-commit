@@ -1,0 +1,25 @@
+#!/bin/sh
+# ThinkMartz pre-commit hook
+# Runs fast, static-only checks before allowing a commit.
+# Installed via: make install-hooks (sets core.hooksPath to scripts/hooks)
+
+set -e
+
+echo "Running pre-commit checks..."
+
+# 1. Formatting + import order check (check-and-fail, no auto-rewrite)
+UNFORMATTED=$(goimports -l .)
+if [ -n "$UNFORMATTED" ]; then
+  echo ""
+  echo "The following files are not formatted correctly:"
+  echo "$UNFORMATTED"
+  echo ""
+  echo "Run 'goimports -w .' to fix, then review the diff and re-commit."
+  exit 1
+fi
+
+# 2. Linting (golangci-lint via the existing Makefile target)
+make lint
+
+echo "Pre-commit checks passed."
+exit 0
