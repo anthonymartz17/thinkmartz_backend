@@ -4,9 +4,12 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 // Config is the fully-loaded application configuration.
@@ -49,6 +52,10 @@ type JWTConfig struct {
 // required value is missing, rather than letting the app start in a
 // broken state.
 func Load() (*Config, error) {
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found — using system env")
+	}
+
 	port, err := strconv.Atoi(getEnv("PORT", "8080"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid PORT: %w", err)
@@ -60,6 +67,7 @@ func Load() (*Config, error) {
 	}
 
 	jwtSecret := os.Getenv("JWT_SECRET")
+
 	if jwtSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET is required")
 	}
