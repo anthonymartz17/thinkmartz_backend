@@ -1,4 +1,4 @@
-.PHONY: run build test test-one lint docker-up docker-down migrate-up migrate-down migrate-create clean install-hooks
+.PHONY: run build test test-one lint docker-up docker-down migrate-up migrate-down migrate-create clean install-hooks fmt
 
 run:
 	go run ./cmd/api
@@ -29,6 +29,9 @@ migrate-down:
 
 migrate-create:
 	migrate create -ext sql -dir db/migrations -seq $(NAME)
+
+fmt:
+	goimports -w .
 
 clean:
 	rm -rf bin/
