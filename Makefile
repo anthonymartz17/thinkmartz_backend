@@ -1,3 +1,10 @@
+
+include .env
+export
+
+DB_URL := postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE)
+
+
 .PHONY: run build test test-one lint docker-up docker-down migrate-up migrate-down migrate-create clean install-hooks fmt
 
 run:

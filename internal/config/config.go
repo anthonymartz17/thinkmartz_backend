@@ -33,6 +33,9 @@ type DBConfig struct {
 	Name     string
 	User     string
 	Password string
+	SSLMode  string
+	MaxConns int32
+	MinConns int32
 }
 
 // RedisConfig holds Redis connection settings.
@@ -66,6 +69,18 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid DB_PORT: %w", err)
 	}
 
+	maxConns, err := strconv.ParseInt(getEnv("DB_MAX_CONNS", "10"), 10, 32)
+
+	if err != nil {
+		return nil, fmt.Errorf("invalid DB_MAX_CONNS: %w", err)
+	}
+
+	minConns, err := strconv.ParseInt(getEnv("DB_MIN_CONNS", "2"), 10, 32)
+
+	if err != nil {
+		return nil, fmt.Errorf("invalid DB_MIN_CONNS: %w", err)
+	}
+
 	jwtSecret := os.Getenv("JWT_SECRET")
 
 	if jwtSecret == "" {
@@ -93,6 +108,9 @@ func Load() (*Config, error) {
 			Name:     getEnv("DB_NAME", "thinkmartz"),
 			User:     getEnv("DB_USER", "postgres"),
 			Password: getEnv("DB_PASSWORD", "postgres"),
+			SSLMode:  getEnv("DB_SSL_MODE", "disable"),
+			MaxConns: int32(maxConns),
+			MinConns: int32(minConns),
 		},
 		Redis: RedisConfig{
 			Addr: getEnv("REDIS_ADDR", "localhost:6379"),
