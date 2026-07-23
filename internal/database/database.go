@@ -1,4 +1,3 @@
-
 // Package database provides the PostgreSQL connection pool for the
 // ThinkMartz API.
 package database
@@ -11,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/fx"
 )
-
 
 // NewPool builds a pgx connection pool from config, with no fx
 // dependency — usable directly in tests or any non-fx context.
