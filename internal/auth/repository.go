@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -13,6 +14,9 @@ var (
 	// ErrAlreadyExists is returned when a user's email or username is
 	// already taken.
 	ErrAlreadyExists = errors.New("already exists")
+
+	// ErrUserNotFound is returned when no user matches the given email.
+	ErrUserNotFound = errors.New("user not found")
 )
 
 // Repository provides a connection pool and methods to interact with database
@@ -55,4 +59,35 @@ func (r *Repository) Save(ctx context.Context, user *User) error {
 	}
 
 	return nil
+}
+
+// FindByEmail returns a full user by email if exists
+func (r *Repository) FindByEmail(ctx context.Context, email string) (*User, error) {
+
+	var user User
+	query := `
+	SELECT id, email, username, password_hash, created_at FROM users 
+	WHERE email = $1
+	`
+
+	err := r.Pool.QueryRow(ctx, query, email).Scan(
+		&user.ID,
+		&user.Email,
+		&user.Username,
+		&user.PasswordHash,
+		&user.CreatedAt,
+	)
+
+	if err != nil {
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+
+		return nil, fmt.Errorf("find by email: %w", err)
+
+	}
+
+	return &user, nil
+
 }
