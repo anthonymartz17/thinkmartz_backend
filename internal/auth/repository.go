@@ -1,3 +1,5 @@
+// Package auth handles user registration, login, JWT issuing/validation,
+// and session management.
 package auth
 
 import (
@@ -5,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -90,4 +93,24 @@ func (r *Repository) FindByEmail(ctx context.Context, email string) (*User, erro
 
 	return &user, nil
 
+}
+
+// Delete removes a user from users table
+func (r *Repository) Delete(ctx context.Context, userID uuid.UUID) error {
+
+	query := `
+	DELETE FROM users
+	WHERE id = $1
+	`
+	rowsDeleted, err := r.Pool.Exec(ctx, query, userID)
+
+	if err != nil {
+		return fmt.Errorf("Delete user: %w", err)
+	}
+
+	if rowsDeleted.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+
+	return nil
 }

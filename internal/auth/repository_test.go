@@ -100,6 +100,37 @@ func TestFindByEmail_NotFound(t *testing.T) {
 	assert.Error(t, gotErr, "expected a not found error for non-existing user")
 
 }
+func TestDelete_Success(t *testing.T) {
+	// arrange
+	ctx := t.Context()
+	repo := newTestRepository(t)
+	user := newTestUser(t)
+
+	err := repo.Save(ctx, user)
+	require.NoError(t, err, "should not fail to save fake user")
+
+	// act
+	gotErr := repo.Delete(ctx, user.ID)
+	_, gotFindByEmailErr := repo.FindByEmail(ctx, user.Email)
+
+	// assert
+	assert.NoError(t, gotErr, "should delete existing user successfully")
+	assert.ErrorIs(t, gotFindByEmailErr, ErrUserNotFound, "Expected ErrUserNotFound after successful deletion")
+
+}
+func TestDelete_NotFound(t *testing.T) {
+	// arrange
+	ctx := t.Context()
+	repo := newTestRepository(t)
+	nonExistentID := uuid.New()
+
+	// act
+	gotErr := repo.Delete(ctx, nonExistentID)
+
+	// assert
+	assert.ErrorIs(t, gotErr, ErrUserNotFound, "expected ErrUserNotFound specifically")
+
+}
 
 func newTestUser(t *testing.T) *User {
 	t.Helper()
