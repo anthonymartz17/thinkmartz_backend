@@ -17,32 +17,32 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
-// MockTokenService is a mock of TokenService interface.
-type MockTokenService struct {
+// MockTokenIssuer is a mock of TokenIssuer interface.
+type MockTokenIssuer struct {
 	ctrl     *gomock.Controller
-	recorder *MockTokenServiceMockRecorder
+	recorder *MockTokenIssuerMockRecorder
 	isgomock struct{}
 }
 
-// MockTokenServiceMockRecorder is the mock recorder for MockTokenService.
-type MockTokenServiceMockRecorder struct {
-	mock *MockTokenService
+// MockTokenIssuerMockRecorder is the mock recorder for MockTokenIssuer.
+type MockTokenIssuerMockRecorder struct {
+	mock *MockTokenIssuer
 }
 
-// NewMockTokenService creates a new mock instance.
-func NewMockTokenService(ctrl *gomock.Controller) *MockTokenService {
-	mock := &MockTokenService{ctrl: ctrl}
-	mock.recorder = &MockTokenServiceMockRecorder{mock}
+// NewMockTokenIssuer creates a new mock instance.
+func NewMockTokenIssuer(ctrl *gomock.Controller) *MockTokenIssuer {
+	mock := &MockTokenIssuer{ctrl: ctrl}
+	mock.recorder = &MockTokenIssuerMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockTokenService) EXPECT() *MockTokenServiceMockRecorder {
+func (m *MockTokenIssuer) EXPECT() *MockTokenIssuerMockRecorder {
 	return m.recorder
 }
 
 // IssueAccessToken mocks base method.
-func (m *MockTokenService) IssueAccessToken(userID uuid.UUID) (string, error) {
+func (m *MockTokenIssuer) IssueAccessToken(userID uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IssueAccessToken", userID)
 	ret0, _ := ret[0].(string)
@@ -51,13 +51,13 @@ func (m *MockTokenService) IssueAccessToken(userID uuid.UUID) (string, error) {
 }
 
 // IssueAccessToken indicates an expected call of IssueAccessToken.
-func (mr *MockTokenServiceMockRecorder) IssueAccessToken(userID any) *gomock.Call {
+func (mr *MockTokenIssuerMockRecorder) IssueAccessToken(userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueAccessToken", reflect.TypeOf((*MockTokenService)(nil).IssueAccessToken), userID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueAccessToken", reflect.TypeOf((*MockTokenIssuer)(nil).IssueAccessToken), userID)
 }
 
 // IssueRefreshToken mocks base method.
-func (m *MockTokenService) IssueRefreshToken(ctx context.Context, userID uuid.UUID) (string, error) {
+func (m *MockTokenIssuer) IssueRefreshToken(ctx context.Context, userID uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IssueRefreshToken", ctx, userID)
 	ret0, _ := ret[0].(string)
@@ -66,7 +66,7 @@ func (m *MockTokenService) IssueRefreshToken(ctx context.Context, userID uuid.UU
 }
 
 // IssueRefreshToken indicates an expected call of IssueRefreshToken.
-func (mr *MockTokenServiceMockRecorder) IssueRefreshToken(ctx, userID any) *gomock.Call {
+func (mr *MockTokenIssuerMockRecorder) IssueRefreshToken(ctx, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueRefreshToken", reflect.TypeOf((*MockTokenService)(nil).IssueRefreshToken), ctx, userID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueRefreshToken", reflect.TypeOf((*MockTokenIssuer)(nil).IssueRefreshToken), ctx, userID)
 }

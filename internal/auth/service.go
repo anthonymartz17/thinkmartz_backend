@@ -12,12 +12,12 @@ import (
 // and JWT issuing — by orchestrating calls to a UserRepository.
 type Service struct {
 	repo   UserRepository
-	token  TokenService
+	token  TokenIssuer
 	logger *zap.Logger
 }
 
 // NewService creates a new Service
-func NewService(r UserRepository, t TokenService, l *zap.Logger) *Service {
+func NewService(r UserRepository, t TokenIssuer, l *zap.Logger) *Service {
 	return &Service{
 		repo:   r,
 		token:  t,
