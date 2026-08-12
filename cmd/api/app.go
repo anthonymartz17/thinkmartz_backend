@@ -22,6 +22,7 @@ func NewApp() *fx.App {
 		fx.Provide(database.NewPostgresPool),
 		fx.Provide(redis.NewRedisClient),
 		fx.Provide(auth.NewService),
+		fx.Provide(auth.NewTokenService),
 		fx.Provide(auth.NewRepository),
 		fx.Invoke(func(*http.Server) {}),
 		fx.Invoke(func(*pgxpool.Pool) {}),
