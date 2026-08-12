@@ -1,6 +1,9 @@
 package auth
 
 import (
+	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -49,4 +52,31 @@ func (t *TokenService) IssueAccessToken(userID uuid.UUID) (string, error) {
 	}
 
 	return signedToken, nil
+}
+
+// IssueRefreshToken generates a new opaque refresh token and stores it in
+// Redis keyed by userID, overwriting any existing token for that user.
+func (t *TokenService) IssueRefreshToken(ctx context.Context, userID uuid.UUID) (string, error) {
+
+	opaque, err := generateRefreshTokenValue()
+	if err != nil {
+		return "", fmt.Errorf("generate random token: %w", err)
+	}
+
+	key := fmt.Sprintf("refresh_token:%s", userID.String())
+	err = t.RedisClient.Set(ctx, key, opaque, t.JWTConfig.RefreshExpiry).Err()
+	if err != nil {
+		return "", fmt.Errorf("set refreshToken on redis: %w", err)
+	}
+
+	return opaque, nil
+}
+
+// generateRefreshTokenValue generates a random byte slice and encodes it to base64.URLEncoding
+func generateRefreshTokenValue() (string, error) {
+	b := make([]byte, 32) // 32 bytes = 256 bits of randomness
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate refresh token: %w", err)
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
 }
