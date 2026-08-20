@@ -1,10 +1,11 @@
-package auth
+package auth_test
 
 import (
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/anthonymartz17/thinkmartz_backend/internal/auth"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/config"
 	redisClient "github.com/anthonymartz17/thinkmartz_backend/internal/redis"
 	"github.com/golang-jwt/jwt/v5"
@@ -16,7 +17,7 @@ import (
 func TestIssueAccessToken_Success(t *testing.T) {
 
 	// arrange
-	svc := &TokenService{
+	svc := &auth.TokenService{
 		JWTConfig: config.JWTConfig{
 			Secret: "test-secret",
 			Expiry: 15 * time.Minute,
@@ -29,7 +30,7 @@ func TestIssueAccessToken_Success(t *testing.T) {
 	tokenString, err := svc.IssueAccessToken(userID)
 	require.NoError(t, err)
 
-	var claims AccessTokenClaims
+	var claims auth.AccessTokenClaims
 
 	parsedToken, err := jwt.ParseWithClaims(tokenString, &claims, func(_ *jwt.Token) (interface{}, error) {
 		return []byte(svc.JWTConfig.Secret), nil
@@ -76,14 +77,14 @@ func TestIssueRefreshToken_RedisFailure(t *testing.T) {
 	assert.Empty(t, gotRefreshToken, "should not return a token when redis write fails")
 }
 
-func newTestTokenService(t *testing.T) *TokenService {
+func newTestTokenService(t *testing.T) *auth.TokenService {
 	t.Helper()
 
 	cfg, err := config.Load()
 	require.NoError(t, err, "config should load on setup")
 
 	client := redisClient.NewRedisClient(cfg.Redis)
-	tokenService := NewTokenService(cfg.JWT, client)
+	tokenService := auth.NewTokenService(cfg.JWT, client)
 
 	return tokenService
 }

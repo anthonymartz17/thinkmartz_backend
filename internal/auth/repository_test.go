@@ -1,10 +1,11 @@
-package auth
+package auth_test
 
 import (
 	"context"
 	"fmt"
 	"testing"
 
+	"github.com/anthonymartz17/thinkmartz_backend/internal/auth"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/config"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/database"
 	"github.com/google/uuid"
@@ -46,7 +47,7 @@ func TestRepository_Save_Duplicate(t *testing.T) {
 	gotErr := repo.Save(ctx, user)
 
 	//assert
-	assert.ErrorIs(t, gotErr, ErrAlreadyExists, "error should equal ErrAlreadyExists")
+	assert.ErrorIs(t, gotErr, auth.ErrAlreadyExists, "error should equal ErrAlreadyExists")
 
 	t.Cleanup(func() {
 		_, err := repo.Pool.Exec(context.Background(), `DELETE FROM users WHERE ID = $1`, user.ID)
@@ -115,7 +116,7 @@ func TestDelete_Success(t *testing.T) {
 
 	// assert
 	assert.NoError(t, gotErr, "should delete existing user successfully")
-	assert.ErrorIs(t, gotFindByEmailErr, ErrUserNotFound, "Expected ErrUserNotFound after successful deletion")
+	assert.ErrorIs(t, gotFindByEmailErr, auth.ErrUserNotFound, "Expected ErrUserNotFound after successful deletion")
 
 }
 func TestDelete_NotFound(t *testing.T) {
@@ -128,14 +129,14 @@ func TestDelete_NotFound(t *testing.T) {
 	gotErr := repo.Delete(ctx, nonExistentID)
 
 	// assert
-	assert.ErrorIs(t, gotErr, ErrUserNotFound, "expected ErrUserNotFound specifically")
+	assert.ErrorIs(t, gotErr, auth.ErrUserNotFound, "expected ErrUserNotFound specifically")
 
 }
 
-func newTestUser(t *testing.T) *User {
+func newTestUser(t *testing.T) *auth.User {
 	t.Helper()
 
-	user := &User{
+	user := &auth.User{
 		Email:        fmt.Sprintf("test@email.com_%s", t.Name()),
 		Username:     t.Name(),
 		PasswordHash: "fake-hashed-password",
@@ -143,7 +144,7 @@ func newTestUser(t *testing.T) *User {
 	return user
 }
 
-func newTestRepository(t *testing.T) *Repository {
+func newTestRepository(t *testing.T) *auth.Repository {
 	t.Helper()
 
 	cfg, err := config.Load()
@@ -152,5 +153,5 @@ func newTestRepository(t *testing.T) *Repository {
 	pool, err := database.NewPool(t.Context(), cfg)
 	require.NoError(t, err, "Failed to create database pool")
 
-	return NewRepository(pool)
+	return auth.NewRepository(pool)
 }
