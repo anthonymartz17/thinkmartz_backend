@@ -22,6 +22,9 @@ var (
 	ErrUserNotFound = errors.New("user not found")
 )
 
+// Checks if  Repository implements UserRepository
+var _ UserRepository = (*Repository)(nil)
+
 // Repository provides a connection pool and methods to interact with database
 type Repository struct {
 	Pool *pgxpool.Pool
