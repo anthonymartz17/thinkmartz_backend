@@ -17,6 +17,10 @@ var (
 	// ErrAlreadyExists is returned when a user's email or username is
 	// already taken.
 	ErrAlreadyExists = errors.New("already exists")
+	// ErrEmailAlreadyExists is returned when a user's email is already taken.
+	ErrEmailAlreadyExists = errors.New("email already exists")
+	// ErrUsernameAlreadyExists is returned when a username is already taken.
+	ErrUsernameAlreadyExists = errors.New("username already exists")
 
 	// ErrUserNotFound is returned when no user matches the given email.
 	ErrUserNotFound = errors.New("user not found")
@@ -58,7 +62,14 @@ func (r *Repository) Save(ctx context.Context, user *User) error {
 	if err != nil {
 
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return ErrAlreadyExists
+			switch pgErr.ConstraintName {
+			case "users_email_key":
+				return ErrEmailAlreadyExists
+			case "users_username_key":
+				return ErrUsernameAlreadyExists
+			default:
+				return ErrAlreadyExists
+			}
 		}
 
 		return fmt.Errorf("save user: %w", err)
@@ -108,7 +119,7 @@ func (r *Repository) Delete(ctx context.Context, userID uuid.UUID) error {
 	rowsDeleted, err := r.Pool.Exec(ctx, query, userID)
 
 	if err != nil {
-		return fmt.Errorf("Delete user: %w", err)
+		return fmt.Errorf("delete user: %w", err)
 	}
 
 	if rowsDeleted.RowsAffected() == 0 {

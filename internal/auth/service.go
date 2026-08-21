@@ -8,6 +8,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// validates Service implements Authenticator
+var _ Authenticator = (*Service)(nil)
+
 // Service handles Auth business logic — user registration, login,
 // and JWT issuing — by orchestrating calls to a UserRepository.
 type Service struct {
@@ -32,16 +35,25 @@ type TokenPair struct {
 	RefreshToken string
 }
 
+// RegisterInput is the data Service.Register needs to create a new user,
+// decoupled from the transport layer's request shape.
+type RegisterInput struct {
+	Email    string
+	Username string
+	Password string
+}
+
 // Register hashes the password, intantiates a new user and saves it using UserRepository methods
-func (s *Service) Register(ctx context.Context, email, password string) (*TokenPair, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+func (s *Service) Register(ctx context.Context, input RegisterInput) (*TokenPair, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 
 	if err != nil {
 		return nil, fmt.Errorf("password hash: %w", err)
 	}
 
 	user := &User{
-		Email:        email,
+		Email:        input.Email,
+		Username:     input.Username,
 		PasswordHash: string(hash),
 	}
 
