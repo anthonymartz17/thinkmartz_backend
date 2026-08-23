@@ -31,6 +31,9 @@ mocks:
 	mockgen -source=internal/auth/tokenservice_interface.go \
 		-destination=internal/auth/mocks/mock_tokenservice.go \
 		-package=mocks
+	mockgen -source=internal/auth/service_interface.go \
+		-destination=internal/auth/mocks/mock_service.go \
+		-package=mocks
 
 ## --- Docker ---
 
