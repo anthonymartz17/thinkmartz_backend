@@ -24,6 +24,7 @@ func NewApp() *fx.App {
 		fx.Provide(auth.NewService),
 		fx.Provide(auth.NewTokenService),
 		fx.Provide(auth.NewRepository),
+		fx.Provide(auth.NewHandler),
 		fx.Invoke(func(*http.Server) {}),
 		fx.Invoke(func(*pgxpool.Pool) {}),
 	)
