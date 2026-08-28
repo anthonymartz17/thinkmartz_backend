@@ -16,7 +16,7 @@ import (
 
 // NewHTTPServer builds a bare http.Server and registers its lifecycle
 // with fx: OnStart begins listening (non-blocking), OnStop gracefully
-// shuts down. 
+// shuts down.
 func NewHTTPServer(lc fx.Lifecycle, cfg config.AppConfig, r chi.Router) *http.Server {
 
 	srv := &http.Server{

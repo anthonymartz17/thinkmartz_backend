@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
+// NewRouter receives domain handlers as parameters, creates a new chi Router and registers refresh, public and private routes for handlers using group routes
 func NewRouter(authHandler *auth.Handler) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)

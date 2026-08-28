@@ -138,11 +138,11 @@ func (h *Handler) RegisterPublicRoutes(r chi.Router) {
 }
 
 // RegisterProtectedRoutes registers Handler's protected routes
-func (h *Handler) RegisterProtectedRoutes(r chi.Router) {
+func (h *Handler) RegisterProtectedRoutes(_ chi.Router) {
 	// to be implemented
 }
 
 // RegisterRefreshRoutes registers refresh cookie route which is particular to auth Handler
-func (h *Handler) RegisterRefreshRoutes(r chi.Router) {
+func (h *Handler) RegisterRefreshRoutes(_ chi.Router) {
 	// to be implemented
 }
