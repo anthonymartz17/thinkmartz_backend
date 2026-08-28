@@ -1,5 +1,5 @@
 // internal/auth/main_test.go
-package auth
+package auth_test
 
 import (
 	"os"

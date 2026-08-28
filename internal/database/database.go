@@ -13,13 +13,13 @@ import (
 
 // NewPool builds a pgx connection pool from config, with no fx
 // dependency — usable directly in tests or any non-fx context.
-func NewPool(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
-	poolConfig, err := pgxpool.ParseConfig(connectionString(&cfg.DB))
+func NewPool(ctx context.Context, cfg config.DBConfig) (*pgxpool.Pool, error) {
+	poolConfig, err := pgxpool.ParseConfig(connectionString(&cfg))
 	if err != nil {
 		return nil, fmt.Errorf("parse postgres config: %w", err)
 	}
-	poolConfig.MaxConns = cfg.DB.MaxConns
-	poolConfig.MinConns = cfg.DB.MinConns
+	poolConfig.MaxConns = cfg.MaxConns
+	poolConfig.MinConns = cfg.MinConns
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
@@ -32,7 +32,7 @@ func NewPool(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 // NewPostgresPool builds a pool via NewPool and registers its
 // lifecycle with fx: OnStart pings the database to fail fast if it's
 // unreachable, OnStop closes the pool cleanly.
-func NewPostgresPool(lc fx.Lifecycle, cfg *config.Config) (*pgxpool.Pool, error) {
+func NewPostgresPool(lc fx.Lifecycle, cfg config.DBConfig) (*pgxpool.Pool, error) {
 	pool, err := NewPool(context.Background(), cfg)
 	if err != nil {
 		return nil, err
