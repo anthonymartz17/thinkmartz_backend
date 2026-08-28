@@ -150,7 +150,7 @@ func newTestRepository(t *testing.T) *auth.Repository {
 	cfg, err := config.Load()
 	require.NoError(t, err, "configuration failed to load")
 
-	pool, err := database.NewPool(t.Context(), cfg)
+	pool, err := database.NewPool(t.Context(), cfg.DB)
 	require.NoError(t, err, "Failed to create database pool")
 
 	return auth.NewRepository(pool)

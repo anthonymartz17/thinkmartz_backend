@@ -125,6 +125,30 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
+// NewJWTConfig extracts JWTConfig from Config so fx providers can depend
+// on just the JWT settings rather than the whole Config.
+func NewJWTConfig(cfg *Config) JWTConfig {
+	return cfg.JWT
+}
+
+// NewAppConfig extracts AppConfig from Config so fx providers can depend
+// on just the app-level settings rather than the whole Config.
+func NewAppConfig(cfg *Config) AppConfig {
+	return cfg.App
+}
+
+// NewRedisConfig extracts RedisConfig from Config so fx providers can
+// depend on just the Redis settings rather than the whole Config.
+func NewRedisConfig(cfg *Config) RedisConfig {
+	return cfg.Redis
+}
+
+// NewDBConfig extracts DBConfig from Config so fx providers can depend
+// on just the database settings rather than the whole Config.
+func NewDBConfig(cfg *Config) DBConfig {
+	return cfg.DB
+}
+
 // getEnv returns the environment variable's value, or fallback if unset.
 func getEnv(key, fallback string) string {
 	if value := os.Getenv(key); value != "" {

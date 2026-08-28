@@ -10,14 +10,14 @@ import (
 )
 
 // NewLogger constructs the application's structured logger.
-func NewLogger(lc fx.Lifecycle, cfg *config.Config) (*zap.Logger, error) {
+func NewLogger(lc fx.Lifecycle, cfg config.AppConfig) (*zap.Logger, error) {
 
 	var (
 		err    error
 		logger *zap.Logger
 	)
 
-	if cfg.App.Env == "production" {
+	if cfg.Env == "production" {
 		logger, err = zap.NewProduction()
 
 		if err != nil {

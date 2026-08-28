@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
 )
@@ -51,6 +52,16 @@ func NewHandler(srv Authenticator, l *zap.Logger) *Handler {
 
 // Register handles registration request-response requests
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+
+	// 	w.WriteHeader(http.StatusCreated)
+	// w.Header().Set("Content-Type", "application/json")
+
+	// if err := json.NewEncoder(w).Encode(&RegisterResponse{AccessToken: "tokenPair.AccessToken example"}); err != nil { //nolint:gosec // access token is intentionally returned to the client in the response body
+	// 	h.logger.Error("failed to encode register response", zap.Error(err))
+	// }
+
+	// return
+
 	var req RegisterRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -119,4 +130,19 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(&RegisterResponse{AccessToken: tokenPair.AccessToken}); err != nil { //nolint:gosec // access token is intentionally returned to the client in the response body
 		h.logger.Error("failed to encode register response", zap.Error(err))
 	}
+}
+
+// RegisterPublicRoutes registers Handler's public routes
+func (h *Handler) RegisterPublicRoutes(r chi.Router) {
+	r.Post("/auth/register", h.Register)
+}
+
+// RegisterProtectedRoutes registers Handler's protected routes
+func (h *Handler) RegisterProtectedRoutes(r chi.Router) {
+	// to be implemented
+}
+
+// RegisterRefreshRoutes registers refresh cookie route which is particular to auth Handler
+func (h *Handler) RegisterRefreshRoutes(r chi.Router) {
+	// to be implemented
 }

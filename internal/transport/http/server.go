@@ -10,18 +10,18 @@ import (
 	"time"
 
 	"github.com/anthonymartz17/thinkmartz_backend/internal/config"
+	"github.com/go-chi/chi/v5"
 	"go.uber.org/fx"
 )
 
 // NewHTTPServer builds a bare http.Server and registers its lifecycle
 // with fx: OnStart begins listening (non-blocking), OnStop gracefully
-// shuts down. No routes are registered yet.
-func NewHTTPServer(lc fx.Lifecycle, cfg *config.Config) *http.Server {
-	mux := http.NewServeMux()
+// shuts down. 
+func NewHTTPServer(lc fx.Lifecycle, cfg config.AppConfig, r chi.Router) *http.Server {
 
 	srv := &http.Server{
-		Addr:              fmt.Sprintf(":%d", cfg.App.Port),
-		Handler:           mux,
+		Addr:              fmt.Sprintf(":%d", cfg.Port),
+		Handler:           r,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
