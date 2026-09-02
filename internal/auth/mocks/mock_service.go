@@ -41,6 +41,21 @@ func (m *MockAuthenticator) EXPECT() *MockAuthenticatorMockRecorder {
 	return m.recorder
 }
 
+// Login mocks base method.
+func (m *MockAuthenticator) Login(ctx context.Context, input auth.LoginInput) (*auth.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Login", ctx, input)
+	ret0, _ := ret[0].(*auth.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Login indicates an expected call of Login.
+func (mr *MockAuthenticatorMockRecorder) Login(ctx, input any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Login", reflect.TypeOf((*MockAuthenticator)(nil).Login), ctx, input)
+}
+
 // Register mocks base method.
 func (m *MockAuthenticator) Register(ctx context.Context, input auth.RegisterInput) (*auth.Response, error) {
 	m.ctrl.T.Helper()
