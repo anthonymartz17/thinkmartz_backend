@@ -54,11 +54,11 @@ func TestIssueRefreshToken_Success(t *testing.T) {
 
 	// assert
 	require.NoError(t, gotErr, "should not fail to issueRefreshToken on success case")
-	key := fmt.Sprintf("refresh_token:%s", userID.String())
-	storedRefreshToken, err := tokenService.RedisClient.Get(ctx, key).Result()
+	key := fmt.Sprintf("refresh_token:%s", gotRefreshToken)
+	storedUserID, err := tokenService.RedisClient.Get(ctx, key).Result()
 
 	assert.NoError(t, err, "should not fail on success case")
-	assert.Equal(t, gotRefreshToken, storedRefreshToken, "storedRefreshToken should be equal to gotRefreshToken")
+	assert.Equal(t, userID.String(), storedUserID, "stored value should be the issuing user's ID")
 
 }
 

@@ -55,7 +55,12 @@ func (t *TokenService) IssueAccessToken(userID uuid.UUID) (string, error) {
 }
 
 // IssueRefreshToken generates a new opaque refresh token and stores it in
-// Redis keyed by userID, overwriting any existing token for that user.
+// Redis keyed by the opaque token itself, with the userID as the value —
+// this allows a future refresh/rotate flow to look up the owning user
+// directly from the token presented in the cookie. Unlike keying by userID,
+// this does not invalidate any previously issued refresh token for the same
+// user, so multiple sessions (e.g. multiple devices) can hold valid refresh
+// tokens concurrently.
 func (t *TokenService) IssueRefreshToken(ctx context.Context, userID uuid.UUID) (string, error) {
 
 	opaque, err := generateRefreshTokenValue()
@@ -63,8 +68,8 @@ func (t *TokenService) IssueRefreshToken(ctx context.Context, userID uuid.UUID) 
 		return "", fmt.Errorf("generate random token: %w", err)
 	}
 
-	key := fmt.Sprintf("refresh_token:%s", userID.String())
-	err = t.RedisClient.Set(ctx, key, opaque, t.JWTConfig.RefreshExpiry).Err()
+	key := fmt.Sprintf("refresh_token:%s", opaque)
+	err = t.RedisClient.Set(ctx, key, userID.String(), t.JWTConfig.RefreshExpiry).Err()
 	if err != nil {
 		return "", fmt.Errorf("set refreshToken on redis: %w", err)
 	}
