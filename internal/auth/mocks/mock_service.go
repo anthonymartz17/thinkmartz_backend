@@ -56,6 +56,21 @@ func (mr *MockAuthenticatorMockRecorder) Login(ctx, input any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Login", reflect.TypeOf((*MockAuthenticator)(nil).Login), ctx, input)
 }
 
+// RefreshToken mocks base method.
+func (m *MockAuthenticator) RefreshToken(ctx context.Context, opaque string) (*auth.TokenPair, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RefreshToken", ctx, opaque)
+	ret0, _ := ret[0].(*auth.TokenPair)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RefreshToken indicates an expected call of RefreshToken.
+func (mr *MockAuthenticatorMockRecorder) RefreshToken(ctx, opaque any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshToken", reflect.TypeOf((*MockAuthenticator)(nil).RefreshToken), ctx, opaque)
+}
+
 // Register mocks base method.
 func (m *MockAuthenticator) Register(ctx context.Context, input auth.RegisterInput) (*auth.Response, error) {
 	m.ctrl.T.Helper()

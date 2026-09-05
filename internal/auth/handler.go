@@ -15,6 +15,7 @@ import (
 const (
 	msgInvalidBody        = "invalid request body"
 	msgInvalidRequest     = "invalid request"
+	msgInvalidSession     = "invalid session"
 	msgEmailExists        = "email already exists"
 	msgUsernameExists     = "username already exists"
 	msgInvalidCredentials = "email or password is invalid"
@@ -39,6 +40,11 @@ type RegisterResponse struct {
 type LoginResponse struct {
 	AccessToken string       `json:"access_token"`
 	User        UserResponse `json:"user"`
+}
+
+// RefreshTokenResponse represents a valid refresh token response.
+type RefreshTokenResponse struct {
+	AccessToken string `json:"access_token"`
 }
 
 // FieldError represents a single validation failure on one field.
@@ -193,4 +199,43 @@ func (h *Handler) RegisterProtectedRoutes(_ chi.Router) {
 // RegisterRefreshRoutes registers refresh cookie route which is particular to auth Handler
 func (h *Handler) RegisterRefreshRoutes(_ chi.Router) {
 	// to be implemented
+}
+
+// RefreshToken extracts refresh token from cookie then refreshes an access token
+func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+
+	cookie, err := r.Cookie("refresh_token")
+
+	if errors.Is(err, http.ErrNoCookie) {
+		writeError(w, http.StatusUnauthorized, msgInvalidSession)
+		return
+	}
+
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, msgInternalServer)
+		return
+	}
+
+	tokenPair, err := h.service.RefreshToken(r.Context(), cookie.Value)
+
+	if err != nil {
+		if errors.Is(err, ErrRefreshTokenNotFound) {
+			writeError(w, http.StatusUnauthorized, msgInvalidSession)
+		} else {
+			writeError(w, http.StatusInternalServerError, msgInternalServer)
+		}
+
+		return
+	}
+
+	setRefreshCookie(w, tokenPair.RefreshToken)
+
+	response := &RefreshTokenResponse{
+		AccessToken: tokenPair.AccessToken,
+	}
+
+	if err := writeJSON(w, http.StatusOK, response); err != nil { //nolint:gosec // access token is intentionally returned to the client in the response body
+		h.logger.Error("failed to encode refresh token response", zap.Error(err))
+	}
+
 }
