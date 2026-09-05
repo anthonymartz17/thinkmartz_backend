@@ -113,3 +113,17 @@ func (t *TokenService) ValidateRefreshToken(ctx context.Context, opaque string) 
 	return userID, nil
 
 }
+
+func (t *TokenService) InvalidateRefreshToken(ctx context.Context, token string) error {
+	key := fmt.Sprintf("session:refresh_token:%s", token)
+	deletedCount, err := t.RedisClient.Del(ctx, key).Result()
+
+	if err != nil {
+		return fmt.Errorf("invalidate refresh token: %w", err)
+	}
+
+	if deletedCount == 0 {
+		return ErrRefreshTokenNotFound
+	}
+	return nil
+}

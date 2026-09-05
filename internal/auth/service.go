@@ -140,3 +140,38 @@ func (s *Service) Login(ctx context.Context, input LoginInput) (*Response, error
 	}, nil
 
 }
+
+// RefreshToken validates received refresh token
+// issues both access and refresh token
+// invalidates old token
+// returns a TokenPair on success and error on failure.
+func (s *Service) RefreshToken(ctx context.Context, opaque string) (*TokenPair, error) {
+
+	userID, err := s.token.ValidateRefreshToken(ctx, opaque)
+
+	if err != nil {
+		return nil, err
+	}
+
+	accessToken, err := s.token.IssueAccessToken(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := s.token.IssueRefreshToken(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.token.InvalidateRefreshToken(ctx, opaque); err != nil {
+		s.logger.Warn(
+			"failed to invalidate old refresh token after rotation",
+			zap.Error(err),
+			zap.String("stale_opaque_prefix", opaque[:8]),
+		)
+	}
+	return &TokenPair{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
