@@ -114,6 +114,7 @@ func (t *TokenService) ValidateRefreshToken(ctx context.Context, opaque string) 
 
 }
 
+// InvalidateRefreshToken invalidates old token by deleting it from redis
 func (t *TokenService) InvalidateRefreshToken(ctx context.Context, token string) error {
 	key := fmt.Sprintf("session:refresh_token:%s", token)
 	deletedCount, err := t.RedisClient.Del(ctx, key).Result()

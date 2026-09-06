@@ -302,3 +302,96 @@ func TestHandler_Login(t *testing.T) {
 		assert.Equal(t, http.SameSiteStrictMode, refreshCookie.SameSite)
 	})
 }
+
+func TestHandler_RefreshToken(t *testing.T) {
+	t.Run("no cookie", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAuth := mocks.NewMockAuthenticator(ctrl)
+
+		h := auth.NewHandler(mockAuth, zap.NewNop())
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+		w := httptest.NewRecorder()
+
+		h.RefreshToken(w, req)
+
+		resp := w.Result()
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+
+	t.Run("refresh token not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAuth := mocks.NewMockAuthenticator(ctrl)
+
+		h := auth.NewHandler(mockAuth, zap.NewNop())
+
+		mockAuth.EXPECT().
+			RefreshToken(gomock.Any(), "stale-opaque-token").
+			Return(nil, auth.ErrRefreshTokenNotFound)
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+		req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "stale-opaque-token"})
+		w := httptest.NewRecorder()
+
+		h.RefreshToken(w, req)
+
+		resp := w.Result()
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+
+	t.Run("service failure", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAuth := mocks.NewMockAuthenticator(ctrl)
+
+		h := auth.NewHandler(mockAuth, zap.NewNop())
+
+		mockAuth.EXPECT().
+			RefreshToken(gomock.Any(), "some-opaque-token").
+			Return(nil, errors.New("something unexpected"))
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+		req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "some-opaque-token"})
+		w := httptest.NewRecorder()
+
+		h.RefreshToken(w, req)
+
+		resp := w.Result()
+		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAuth := mocks.NewMockAuthenticator(ctrl)
+
+		h := auth.NewHandler(mockAuth, zap.NewNop())
+
+		mockAuth.EXPECT().
+			RefreshToken(gomock.Any(), "valid-opaque-token").
+			Return(&auth.TokenPair{
+				AccessToken:  "FAKE.ACCESS.TOKEN",
+				RefreshToken: "FAKE-NEW-REFRESH-TOKEN",
+			}, nil)
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+		req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "valid-opaque-token"})
+		w := httptest.NewRecorder()
+
+		h.RefreshToken(w, req)
+
+		resp := w.Result()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var got auth.RefreshTokenResponse
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&got))
+		assert.Equal(t, "FAKE.ACCESS.TOKEN", got.AccessToken)
+
+		cookies := resp.Cookies()
+		require.Len(t, cookies, 1, "expected exactly one cookie to be set")
+		refreshCookie := cookies[0]
+		assert.Equal(t, "refresh_token", refreshCookie.Name)
+		assert.Equal(t, "FAKE-NEW-REFRESH-TOKEN", refreshCookie.Value)
+		assert.True(t, refreshCookie.HttpOnly)
+		assert.True(t, refreshCookie.Secure)
+		assert.Equal(t, http.SameSiteStrictMode, refreshCookie.SameSite)
+	})
+}

@@ -54,7 +54,7 @@ func TestIssueRefreshToken_Success(t *testing.T) {
 
 	// assert
 	require.NoError(t, gotErr, "should not fail to issueRefreshToken on success case")
-	key := fmt.Sprintf("refresh_token:%s", gotRefreshToken)
+	key := fmt.Sprintf("session:refresh_token:%s", gotRefreshToken)
 	storedUserID, err := tokenService.RedisClient.Get(ctx, key).Result()
 
 	assert.NoError(t, err, "should not fail on success case")
