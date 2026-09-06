@@ -197,8 +197,8 @@ func (h *Handler) RegisterProtectedRoutes(_ chi.Router) {
 }
 
 // RegisterRefreshRoutes registers refresh cookie route which is particular to auth Handler
-func (h *Handler) RegisterRefreshRoutes(_ chi.Router) {
-	// to be implemented
+func (h *Handler) RegisterRefreshRoutes(r chi.Router) {
+	r.Post("/auth/refresh", h.RefreshToken)
 }
 
 // RefreshToken extracts refresh token from cookie then refreshes an access token
