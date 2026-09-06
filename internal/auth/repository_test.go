@@ -36,25 +36,62 @@ func TestRepository_Save_Success(t *testing.T) {
 }
 
 func TestRepository_Save_Duplicate(t *testing.T) {
-	//arrange
-	repo := newTestRepository(t)
-	user := newTestUser(t)
-	ctx := t.Context()
-	firstErr := repo.Save(ctx, user)
-	require.NoError(t, firstErr, "First save should succeed")
+	t.Run("duplicate email", func(t *testing.T) {
+		// arrange
+		repo := newTestRepository(t)
+		ctx := t.Context()
+		first := newTestUser(t)
+		firstErr := repo.Save(ctx, first)
+		require.NoError(t, firstErr, "First save should succeed")
 
-	//act
-	gotErr := repo.Save(ctx, user)
-
-	//assert
-	assert.ErrorIs(t, gotErr, auth.ErrAlreadyExists, "error should equal ErrAlreadyExists")
-
-	t.Cleanup(func() {
-		_, err := repo.Pool.Exec(context.Background(), `DELETE FROM users WHERE ID = $1`, user.ID)
-
-		if err != nil {
-			t.Logf("cleanup failed: %v", err)
+		second := &auth.User{
+			Email:        first.Email,
+			Username:     first.Username + "-second",
+			PasswordHash: "fake-hashed-password",
 		}
+
+		// act
+		gotErr := repo.Save(ctx, second)
+
+		// assert
+		assert.ErrorIs(t, gotErr, auth.ErrEmailAlreadyExists, "error should equal ErrEmailAlreadyExists")
+
+		t.Cleanup(func() {
+			_, err := repo.Pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, first.ID)
+
+			if err != nil {
+				t.Logf("cleanup failed: %v", err)
+			}
+		})
+	})
+
+	t.Run("duplicate username", func(t *testing.T) {
+		// arrange
+		repo := newTestRepository(t)
+		ctx := t.Context()
+		first := newTestUser(t)
+		firstErr := repo.Save(ctx, first)
+		require.NoError(t, firstErr, "First save should succeed")
+
+		second := &auth.User{
+			Email:        "second-" + first.Email,
+			Username:     first.Username,
+			PasswordHash: "fake-hashed-password",
+		}
+
+		// act
+		gotErr := repo.Save(ctx, second)
+
+		// assert
+		assert.ErrorIs(t, gotErr, auth.ErrUsernameAlreadyExists, "error should equal ErrUsernameAlreadyExists")
+
+		t.Cleanup(func() {
+			_, err := repo.Pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, first.ID)
+
+			if err != nil {
+				t.Logf("cleanup failed: %v", err)
+			}
+		})
 	})
 }
 

@@ -3,12 +3,15 @@ export
 
 DB_URL := postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE)
 
-.PHONY: run build test test-one lint mocks docker-up docker-down migrate-up migrate-down migrate-create clean install-hooks fmt
+.PHONY: run dev build test test-one lint mocks docker-up docker-down migrate-up migrate-down migrate-create clean install-hooks fmt
 
 ## --- Build & Run ---
 
 run:
 	go run ./cmd/api
+
+dev:
+	air
 
 build:
 	go build -o bin/api ./cmd/api
@@ -19,7 +22,7 @@ test:
 	go test ./...
 
 test-one:
-	go test ./... -run $(TEST)
+	go test ./... -run $(TEST) -v
 
 lint:
 	golangci-lint run ./...
@@ -60,7 +63,7 @@ fmt:
 	goimports -w .
 
 clean:
-	rm -rf bin/
+	rm -rf bin/ tmp/
 
 install-hooks:
 	git config core.hooksPath scripts/hooks

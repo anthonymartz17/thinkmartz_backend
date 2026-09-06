@@ -4,5 +4,7 @@ import "context"
 
 // Authenticator defines methods a concrete service must implement to be used by Handler
 type Authenticator interface {
-	Register(ctx context.Context, input RegisterInput) (*TokenPair, error)
+	Register(ctx context.Context, input RegisterInput) (*Response, error)
+	Login(ctx context.Context, input LoginInput) (*Response, error)
+	RefreshToken(ctx context.Context, opaque string) (*TokenPair, error)
 }

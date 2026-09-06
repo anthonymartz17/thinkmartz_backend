@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,6 +12,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+)
+
+var (
+	// ErrRefreshTokenNotFound is returned when no match for refresh token is not found on redis
+	ErrRefreshTokenNotFound = errors.New("token not found")
 )
 
 // AccessTokenClaims defines the expected claims for the access token
@@ -27,7 +33,6 @@ type TokenService struct {
 
 // NewTokenService builds and returns a new TokenService
 func NewTokenService(t config.JWTConfig, client *redis.Client) *TokenService {
-	fmt.Print(client)
 	return &TokenService{
 		JWTConfig:   t,
 		RedisClient: client,
@@ -55,7 +60,12 @@ func (t *TokenService) IssueAccessToken(userID uuid.UUID) (string, error) {
 }
 
 // IssueRefreshToken generates a new opaque refresh token and stores it in
-// Redis keyed by userID, overwriting any existing token for that user.
+// Redis keyed by the opaque token itself, with the userID as the value —
+// this allows a future refresh/rotate flow to look up the owning user
+// directly from the token presented in the cookie. Unlike keying by userID,
+// this does not invalidate any previously issued refresh token for the same
+// user, so multiple sessions can hold valid refresh
+// tokens concurrently.
 func (t *TokenService) IssueRefreshToken(ctx context.Context, userID uuid.UUID) (string, error) {
 
 	opaque, err := generateRefreshTokenValue()
@@ -63,8 +73,8 @@ func (t *TokenService) IssueRefreshToken(ctx context.Context, userID uuid.UUID) 
 		return "", fmt.Errorf("generate random token: %w", err)
 	}
 
-	key := fmt.Sprintf("refresh_token:%s", userID.String())
-	err = t.RedisClient.Set(ctx, key, opaque, t.JWTConfig.RefreshExpiry).Err()
+	key := fmt.Sprintf("session:refresh_token:%s", opaque)
+	err = t.RedisClient.Set(ctx, key, userID.String(), t.JWTConfig.RefreshExpiry).Err()
 	if err != nil {
 		return "", fmt.Errorf("set refreshToken on redis: %w", err)
 	}
@@ -79,4 +89,42 @@ func generateRefreshTokenValue() (string, error) {
 		return "", fmt.Errorf("generate refresh token: %w", err)
 	}
 	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+// ValidateRefreshToken fetches and returns refresh token from redis if exists otherwise returns ErrRefreshTokenNotFound
+func (t *TokenService) ValidateRefreshToken(ctx context.Context, opaque string) (uuid.UUID, error) {
+
+	key := fmt.Sprintf("session:refresh_token:%s", opaque)
+	val, err := t.RedisClient.Get(ctx, key).Result()
+
+	if errors.Is(err, redis.Nil) {
+		return uuid.Nil, ErrRefreshTokenNotFound
+	}
+
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("get refresh token: %w", err)
+	}
+
+	userID, err := uuid.Parse(val)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("parse stored user id: %w", err)
+	}
+
+	return userID, nil
+
+}
+
+// InvalidateRefreshToken invalidates old token by deleting it from redis
+func (t *TokenService) InvalidateRefreshToken(ctx context.Context, token string) error {
+	key := fmt.Sprintf("session:refresh_token:%s", token)
+	deletedCount, err := t.RedisClient.Del(ctx, key).Result()
+
+	if err != nil {
+		return fmt.Errorf("invalidate refresh token: %w", err)
+	}
+
+	if deletedCount == 0 {
+		return ErrRefreshTokenNotFound
+	}
+	return nil
 }

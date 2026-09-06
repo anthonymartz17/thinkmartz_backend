@@ -3,16 +3,47 @@ package auth
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
-// RegisterResponse represents a valid  registration response
+const (
+	msgInvalidBody        = "invalid request body"
+	msgInvalidRequest     = "invalid request"
+	msgInvalidSession     = "invalid session"
+	msgEmailExists        = "email already exists"
+	msgUsernameExists     = "username already exists"
+	msgInvalidCredentials = "email or password is invalid"
+	msgInternalServer     = "internal server error"
+)
+
+// UserResponse is the client-safe projection of a User returned in auth responses.
+type UserResponse struct {
+	ID        uuid.UUID `json:"id"`
+	Email     string    `json:"email"`
+	Username  string    `json:"username"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// RegisterResponse represents a valid registration response.
 type RegisterResponse struct {
+	AccessToken string       `json:"access_token"`
+	User        UserResponse `json:"user"`
+}
+
+// LoginResponse represents a valid login response.
+type LoginResponse struct {
+	AccessToken string       `json:"access_token"`
+	User        UserResponse `json:"user"`
+}
+
+// RefreshTokenResponse represents a valid refresh token response.
+type RefreshTokenResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
@@ -35,6 +66,12 @@ type RegisterRequest struct {
 	Password string `json:"password" validate:"required,min=8,max=128"`
 }
 
+// LoginRequest is the shape of data the client sends to POST /auth/login.
+type LoginRequest struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=8,max=128"`
+}
+
 // Handler translates HTTP requests into Authenticator calls and writes the
 // resulting response
 type Handler struct {
@@ -53,19 +90,10 @@ func NewHandler(srv Authenticator, l *zap.Logger) *Handler {
 // Register handles registration request-response requests
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
-	// 	w.WriteHeader(http.StatusCreated)
-	// w.Header().Set("Content-Type", "application/json")
-
-	// if err := json.NewEncoder(w).Encode(&RegisterResponse{AccessToken: "tokenPair.AccessToken example"}); err != nil { //nolint:gosec // access token is intentionally returned to the client in the response body
-	// 	h.logger.Error("failed to encode register response", zap.Error(err))
-	// }
-
-	// return
-
 	var req RegisterRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, msgInvalidBody)
 		return
 	}
 
@@ -73,68 +101,94 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		var validationErrs validator.ValidationErrors
 
 		if errors.As(err, &validationErrs) {
-			resp := ValidationErrorResponse{}
-			for _, fe := range validationErrs {
-				resp.Errors = append(resp.Errors, FieldError{
-					Field:   fe.Field(),
-					Message: fmt.Sprintf("failed on the '%s' rule", fe.Tag()),
-				})
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-
-			if err := json.NewEncoder(w).Encode(resp); err != nil {
+			if err := writeJSON(w, http.StatusBadRequest, toValidationErrorResponse(validationErrs)); err != nil {
 				h.logger.Error("failed to encode validation error response", zap.Error(err))
 			}
 			return
 		}
 
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, msgInvalidRequest)
 		return
 
 	}
 
-	input := &RegisterInput{
-		Email:    req.Email,
-		Username: req.Username,
-		Password: req.Password,
-	}
-
-	tokenPair, err := h.service.Register(r.Context(), *input)
+	authResp, err := h.service.Register(r.Context(), toRegisterInput(req))
 
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrEmailAlreadyExists):
-			http.Error(w, "email already exists", http.StatusConflict)
+			writeError(w, http.StatusConflict, msgEmailExists)
 		case errors.Is(err, ErrUsernameAlreadyExists):
-			http.Error(w, "username already exists", http.StatusConflict)
+			writeError(w, http.StatusConflict, msgUsernameExists)
 		default:
 			h.logger.Error("register failed", zap.Error(err))
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			writeError(w, http.StatusInternalServerError, msgInternalServer)
 		}
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_token",
-		HttpOnly: true,
-		Secure:   true,
-		Value:    tokenPair.RefreshToken,
-		Path:     "/auth/refresh",
-		SameSite: http.SameSiteStrictMode,
-	})
-	w.WriteHeader(http.StatusCreated)
+	setRefreshCookie(w, authResp.TokenPair.RefreshToken)
 
-	if err := json.NewEncoder(w).Encode(&RegisterResponse{AccessToken: tokenPair.AccessToken}); err != nil { //nolint:gosec // access token is intentionally returned to the client in the response body
+	registerResp := &RegisterResponse{
+		AccessToken: authResp.TokenPair.AccessToken,
+		User:        toUserResponse(authResp.User),
+	}
+	if err := writeJSON(w, http.StatusCreated, registerResp); err != nil { //nolint:gosec // access token is intentionally returned to the client in the response body
 		h.logger.Error("failed to encode register response", zap.Error(err))
+	}
+}
+
+// Login handles login request-response requests.
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	var req LoginRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, msgInvalidBody)
+		return
+
+	}
+	if err := Validate.Struct(req); err != nil {
+		var validationErrs validator.ValidationErrors
+
+		if errors.As(err, &validationErrs) {
+			if err := writeJSON(w, http.StatusBadRequest, toValidationErrorResponse(validationErrs)); err != nil {
+				h.logger.Error("failed to encode validation error response", zap.Error(err))
+			}
+			return
+		}
+
+		writeError(w, http.StatusBadRequest, msgInvalidRequest)
+		return
+
+	}
+
+	resp, err := h.service.Login(r.Context(), toLoginInput(req))
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) || errors.Is(err, ErrInvalidPassword) {
+			writeError(w, http.StatusUnauthorized, msgInvalidCredentials)
+			return
+		}
+
+		writeError(w, http.StatusInternalServerError, msgInternalServer)
+		h.logger.Error(msgInternalServer, zap.Error(err))
+		return
+	}
+
+	setRefreshCookie(w, resp.TokenPair.RefreshToken)
+
+	loginResp := &LoginResponse{
+		AccessToken: resp.TokenPair.AccessToken,
+		User:        toUserResponse(resp.User),
+	}
+	if err := writeJSON(w, http.StatusOK, loginResp); err != nil { //nolint:gosec // access token is intentionally returned to the client in the response body
+		h.logger.Error("failed to encode login response", zap.Error(err))
 	}
 }
 
 // RegisterPublicRoutes registers Handler's public routes
 func (h *Handler) RegisterPublicRoutes(r chi.Router) {
 	r.Post("/auth/register", h.Register)
+	r.Post("/auth/login", h.Login)
 }
 
 // RegisterProtectedRoutes registers Handler's protected routes
@@ -143,6 +197,45 @@ func (h *Handler) RegisterProtectedRoutes(_ chi.Router) {
 }
 
 // RegisterRefreshRoutes registers refresh cookie route which is particular to auth Handler
-func (h *Handler) RegisterRefreshRoutes(_ chi.Router) {
-	// to be implemented
+func (h *Handler) RegisterRefreshRoutes(r chi.Router) {
+	r.Post("/auth/refresh", h.RefreshToken)
+}
+
+// RefreshToken extracts refresh token from cookie then refreshes an access token
+func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+
+	cookie, err := r.Cookie("refresh_token")
+
+	if errors.Is(err, http.ErrNoCookie) {
+		writeError(w, http.StatusUnauthorized, msgInvalidSession)
+		return
+	}
+
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, msgInternalServer)
+		return
+	}
+
+	tokenPair, err := h.service.RefreshToken(r.Context(), cookie.Value)
+
+	if err != nil {
+		if errors.Is(err, ErrRefreshTokenNotFound) {
+			writeError(w, http.StatusUnauthorized, msgInvalidSession)
+		} else {
+			writeError(w, http.StatusInternalServerError, msgInternalServer)
+		}
+
+		return
+	}
+
+	setRefreshCookie(w, tokenPair.RefreshToken)
+
+	response := &RefreshTokenResponse{
+		AccessToken: tokenPair.AccessToken,
+	}
+
+	if err := writeJSON(w, http.StatusOK, response); err != nil { //nolint:gosec // access token is intentionally returned to the client in the response body
+		h.logger.Error("failed to encode refresh token response", zap.Error(err))
+	}
+
 }
