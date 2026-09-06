@@ -20,6 +20,7 @@ import (
 
 func TestHandler_Register(t *testing.T) {
 	t.Run("invalid JSON", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -29,13 +30,16 @@ func TestHandler_Register(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/auth/register", body)
 		w := httptest.NewRecorder()
 
+		// act
 		h.Register(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
 
 	t.Run("validation fails", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -45,8 +49,10 @@ func TestHandler_Register(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/auth/register", body)
 		w := httptest.NewRecorder()
 
+		// act
 		h.Register(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
@@ -56,6 +62,7 @@ func TestHandler_Register(t *testing.T) {
 	})
 
 	t.Run("email already exists", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -69,13 +76,16 @@ func TestHandler_Register(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/auth/register", body)
 		w := httptest.NewRecorder()
 
+		// act
 		h.Register(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusConflict, resp.StatusCode)
 	})
 
 	t.Run("username already exists", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -89,13 +99,16 @@ func TestHandler_Register(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/auth/register", body)
 		w := httptest.NewRecorder()
 
+		// act
 		h.Register(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusConflict, resp.StatusCode)
 	})
 
 	t.Run("service failure", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -109,13 +122,16 @@ func TestHandler_Register(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/auth/register", body)
 		w := httptest.NewRecorder()
 
+		// act
 		h.Register(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	})
 
 	t.Run("Success", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -134,8 +150,10 @@ func TestHandler_Register(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/auth/register", body)
 		w := httptest.NewRecorder()
 
+		// act
 		h.Register(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
@@ -156,6 +174,7 @@ func TestHandler_Register(t *testing.T) {
 
 func TestHandler_Login(t *testing.T) {
 	t.Run("invalid JSON", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -165,13 +184,16 @@ func TestHandler_Login(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/auth/login", body)
 		w := httptest.NewRecorder()
 
+		// act
 		h.Login(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
 
 	t.Run("validation fails", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -181,8 +203,10 @@ func TestHandler_Login(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/auth/login", body)
 		w := httptest.NewRecorder()
 
+		// act
 		h.Login(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
@@ -192,6 +216,7 @@ func TestHandler_Login(t *testing.T) {
 	})
 
 	t.Run("user not found", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -205,13 +230,16 @@ func TestHandler_Login(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/auth/login", body)
 		w := httptest.NewRecorder()
 
+		// act
 		h.Login(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
 
 	t.Run("invalid password", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -225,13 +253,16 @@ func TestHandler_Login(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/auth/login", body)
 		w := httptest.NewRecorder()
 
+		// act
 		h.Login(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
 
 	t.Run("service failure", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -245,13 +276,16 @@ func TestHandler_Login(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/auth/login", body)
 		w := httptest.NewRecorder()
 
+		// act
 		h.Login(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	})
 
 	t.Run("Success", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -279,8 +313,10 @@ func TestHandler_Login(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/auth/login", body)
 		w := httptest.NewRecorder()
 
+		// act
 		h.Login(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -305,6 +341,7 @@ func TestHandler_Login(t *testing.T) {
 
 func TestHandler_RefreshToken(t *testing.T) {
 	t.Run("no cookie", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -313,13 +350,16 @@ func TestHandler_RefreshToken(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
 		w := httptest.NewRecorder()
 
+		// act
 		h.RefreshToken(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
 
 	t.Run("refresh token not found", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -333,13 +373,16 @@ func TestHandler_RefreshToken(t *testing.T) {
 		req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "stale-opaque-token"})
 		w := httptest.NewRecorder()
 
+		// act
 		h.RefreshToken(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
 
 	t.Run("service failure", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -353,13 +396,16 @@ func TestHandler_RefreshToken(t *testing.T) {
 		req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "some-opaque-token"})
 		w := httptest.NewRecorder()
 
+		// act
 		h.RefreshToken(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	})
 
 	t.Run("Success", func(t *testing.T) {
+		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
@@ -376,8 +422,10 @@ func TestHandler_RefreshToken(t *testing.T) {
 		req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "valid-opaque-token"})
 		w := httptest.NewRecorder()
 
+		// act
 		h.RefreshToken(w, req)
 
+		// assert
 		resp := w.Result()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 

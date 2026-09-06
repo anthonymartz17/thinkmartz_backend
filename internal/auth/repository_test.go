@@ -37,7 +37,7 @@ func TestRepository_Save_Success(t *testing.T) {
 
 func TestRepository_Save_Duplicate(t *testing.T) {
 	t.Run("duplicate email", func(t *testing.T) {
-		//arrange
+		// arrange
 		repo := newTestRepository(t)
 		ctx := t.Context()
 		first := newTestUser(t)
@@ -50,10 +50,10 @@ func TestRepository_Save_Duplicate(t *testing.T) {
 			PasswordHash: "fake-hashed-password",
 		}
 
-		//act
+		// act
 		gotErr := repo.Save(ctx, second)
 
-		//assert
+		// assert
 		assert.ErrorIs(t, gotErr, auth.ErrEmailAlreadyExists, "error should equal ErrEmailAlreadyExists")
 
 		t.Cleanup(func() {
@@ -66,7 +66,7 @@ func TestRepository_Save_Duplicate(t *testing.T) {
 	})
 
 	t.Run("duplicate username", func(t *testing.T) {
-		//arrange
+		// arrange
 		repo := newTestRepository(t)
 		ctx := t.Context()
 		first := newTestUser(t)
@@ -79,10 +79,10 @@ func TestRepository_Save_Duplicate(t *testing.T) {
 			PasswordHash: "fake-hashed-password",
 		}
 
-		//act
+		// act
 		gotErr := repo.Save(ctx, second)
 
-		//assert
+		// assert
 		assert.ErrorIs(t, gotErr, auth.ErrUsernameAlreadyExists, "error should equal ErrUsernameAlreadyExists")
 
 		t.Cleanup(func() {
