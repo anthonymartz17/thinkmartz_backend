@@ -443,3 +443,106 @@ func TestHandler_RefreshToken(t *testing.T) {
 		assert.Equal(t, http.SameSiteStrictMode, refreshCookie.SameSite)
 	})
 }
+
+func TestHandler_Logout(t *testing.T) {
+	t.Run("no cookie", func(t *testing.T) {
+		// arrange
+		ctrl := gomock.NewController(t)
+		mockAuth := mocks.NewMockAuthenticator(ctrl)
+
+		h := auth.NewHandler(mockAuth, zap.NewNop())
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+		w := httptest.NewRecorder()
+
+		// act
+		h.Logout(w, req)
+
+		// assert
+		resp := w.Result()
+		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		cookies := resp.Cookies()
+		require.Len(t, cookies, 1, "expected the refresh cookie to be cleared")
+		refreshCookie := cookies[0]
+		assert.Equal(t, "refresh_token", refreshCookie.Name)
+		assert.Empty(t, refreshCookie.Value)
+		assert.True(t, refreshCookie.Expires.Before(time.Now()), "cookie should be expired")
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		// arrange
+		ctrl := gomock.NewController(t)
+		mockAuth := mocks.NewMockAuthenticator(ctrl)
+
+		h := auth.NewHandler(mockAuth, zap.NewNop())
+
+		mockAuth.EXPECT().
+			Logout(gomock.Any(), "valid-opaque-token").
+			Return(nil)
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+		req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "valid-opaque-token"})
+		w := httptest.NewRecorder()
+
+		// act
+		h.Logout(w, req)
+
+		// assert
+		resp := w.Result()
+		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		cookies := resp.Cookies()
+		require.Len(t, cookies, 1, "expected the refresh cookie to be cleared")
+		refreshCookie := cookies[0]
+		assert.Equal(t, "refresh_token", refreshCookie.Name)
+		assert.Empty(t, refreshCookie.Value)
+		assert.True(t, refreshCookie.Expires.Before(time.Now()), "cookie should be expired")
+	})
+
+	t.Run("still succeeds when token is not found", func(t *testing.T) {
+		// arrange
+		ctrl := gomock.NewController(t)
+		mockAuth := mocks.NewMockAuthenticator(ctrl)
+
+		h := auth.NewHandler(mockAuth, zap.NewNop())
+
+		mockAuth.EXPECT().
+			Logout(gomock.Any(), "stale-opaque-token").
+			Return(auth.ErrRefreshTokenNotFound)
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+		req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "stale-opaque-token"})
+		w := httptest.NewRecorder()
+
+		// act
+		h.Logout(w, req)
+
+		// assert
+		resp := w.Result()
+		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+	})
+
+	t.Run("still succeeds when service fails unexpectedly", func(t *testing.T) {
+		// arrange
+		ctrl := gomock.NewController(t)
+		mockAuth := mocks.NewMockAuthenticator(ctrl)
+
+		h := auth.NewHandler(mockAuth, zap.NewNop())
+
+		mockAuth.EXPECT().
+			Logout(gomock.Any(), "some-opaque-token").
+			Return(errors.New("redis unavailable"))
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+		req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "some-opaque-token"})
+		w := httptest.NewRecorder()
+
+		// act
+		h.Logout(w, req)
+
+		// assert
+		resp := w.Result()
+		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+	})
+}

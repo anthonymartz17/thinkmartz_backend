@@ -7,4 +7,5 @@ type Authenticator interface {
 	Register(ctx context.Context, input RegisterInput) (*Response, error)
 	Login(ctx context.Context, input LoginInput) (*Response, error)
 	RefreshToken(ctx context.Context, opaque string) (*TokenPair, error)
+	Logout(ctx context.Context, token string) error
 }
