@@ -506,3 +506,65 @@ func TestRefreshToken(t *testing.T) {
 		assert.Equal(t, "FAKE-NEW-REFRESH-TOKEN", gotTokenPair.RefreshToken)
 	})
 }
+
+func TestLogout(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		ctrl := gomock.NewController(t)
+		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+
+		mockTokenSrv.EXPECT().
+			InvalidateRefreshToken(ctx, "old-opaque-token").
+			Return(nil)
+
+		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+
+		// act
+		gotErr := svc.Logout(ctx, "old-opaque-token")
+
+		// assert
+		assert.NoError(t, gotErr)
+	})
+
+	t.Run("Fails when token is not found", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		ctrl := gomock.NewController(t)
+		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+
+		mockTokenSrv.EXPECT().
+			InvalidateRefreshToken(ctx, "unknown-opaque-token").
+			Return(auth.ErrRefreshTokenNotFound)
+
+		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+
+		// act
+		gotErr := svc.Logout(ctx, "unknown-opaque-token")
+
+		// assert
+		assert.ErrorIs(t, gotErr, auth.ErrRefreshTokenNotFound)
+	})
+
+	t.Run("Fails when redis is unreachable", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		ctrl := gomock.NewController(t)
+		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+
+		mockTokenSrv.EXPECT().
+			InvalidateRefreshToken(ctx, "old-opaque-token").
+			Return(errors.New("redis unavailable"))
+
+		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+
+		// act
+		gotErr := svc.Logout(ctx, "old-opaque-token")
+
+		// assert
+		assert.ErrorContains(t, gotErr, "redis unavailable")
+	})
+}

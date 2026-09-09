@@ -175,3 +175,10 @@ func (s *Service) RefreshToken(ctx context.Context, opaque string) (*TokenPair, 
 		RefreshToken: refreshToken,
 	}, nil
 }
+
+// Logout ends the session associated with the given refresh token.
+// It is idempotent: invalidating an already-expired or unknown token is not an error.
+func (s *Service) Logout(ctx context.Context, token string) error {
+	return s.token.InvalidateRefreshToken(ctx, token)
+
+}

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/anthonymartz17/thinkmartz_backend/internal/config"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -75,8 +76,9 @@ type LoginRequest struct {
 // Handler translates HTTP requests into Authenticator calls and writes the
 // resulting response
 type Handler struct {
-	service Authenticator
-	logger  *zap.Logger
+	service   Authenticator
+	jwtConfig config.JWTConfig
+	logger    *zap.Logger
 }
 
 // NewHandler creates and returns a new Handler
@@ -127,7 +129,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setRefreshCookie(w, authResp.TokenPair.RefreshToken)
+	setRefreshCookie(w, authResp.TokenPair.RefreshToken, h.jwtConfig.RefreshExpiry)
 
 	registerResp := &RegisterResponse{
 		AccessToken: authResp.TokenPair.AccessToken,
@@ -174,7 +176,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setRefreshCookie(w, resp.TokenPair.RefreshToken)
+	setRefreshCookie(w, resp.TokenPair.RefreshToken, h.jwtConfig.RefreshExpiry)
 
 	loginResp := &LoginResponse{
 		AccessToken: resp.TokenPair.AccessToken,
@@ -199,6 +201,7 @@ func (h *Handler) RegisterProtectedRoutes(_ chi.Router) {
 // RegisterRefreshRoutes registers refresh cookie route which is particular to auth Handler
 func (h *Handler) RegisterRefreshRoutes(r chi.Router) {
 	r.Post("/auth/refresh", h.RefreshToken)
+	r.Post("/auth/logout", h.Logout)
 }
 
 // RefreshToken extracts refresh token from cookie then refreshes an access token
@@ -228,7 +231,7 @@ func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setRefreshCookie(w, tokenPair.RefreshToken)
+	setRefreshCookie(w, tokenPair.RefreshToken, h.jwtConfig.RefreshExpiry)
 
 	response := &RefreshTokenResponse{
 		AccessToken: tokenPair.AccessToken,
@@ -238,4 +241,24 @@ func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error("failed to encode refresh token response", zap.Error(err))
 	}
 
+}
+
+// Logout invalidates the caller's refresh token and clears the refresh-token cookie.
+// It is idempotent: a missing cookie or an already-invalidated token still succeeds,
+// since the client's desired end state (no active session) is already satisfied.
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("refresh_token")
+
+	if err != nil {
+		clearRefreshCookie(w)
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if err := h.service.Logout(r.Context(), cookie.Value); err != nil && !errors.Is(err, ErrRefreshTokenNotFound) {
+		h.logger.Warn("invalidate refresh token on logout", zap.Error(err))
+	}
+
+	clearRefreshCookie(w)
+	w.WriteHeader(http.StatusNoContent)
 }
