@@ -191,17 +191,18 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) RegisterPublicRoutes(r chi.Router) {
 	r.Post("/auth/register", h.Register)
 	r.Post("/auth/login", h.Login)
+	r.Post("/auth/logout", h.Logout)
 }
 
 // RegisterProtectedRoutes registers Handler's protected routes
 func (h *Handler) RegisterProtectedRoutes(_ chi.Router) {
 	// to be implemented
+
 }
 
 // RegisterRefreshRoutes registers refresh cookie route which is particular to auth Handler
 func (h *Handler) RegisterRefreshRoutes(r chi.Router) {
 	r.Post("/auth/refresh", h.RefreshToken)
-	r.Post("/auth/logout", h.Logout)
 }
 
 // RefreshToken extracts refresh token from cookie then refreshes an access token
