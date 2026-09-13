@@ -32,9 +32,14 @@ func AuthMiddleware(jwtConfig config.JWTConfig) func(http.Handler) http.Handler 
 
 			claims := &auth.AccessTokenClaims{}
 
-			token, err := jwt.ParseWithClaims(accessToken, claims, func(_ *jwt.Token) (any, error) {
-				return []byte(jwtConfig.Secret), nil
-			}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+			token, err := jwt.ParseWithClaims(
+				accessToken,
+				claims,
+				func(_ *jwt.Token) (any, error) {
+					return []byte(jwtConfig.Secret), nil
+				},
+				jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+			)
 			if err != nil || !token.Valid {
 				http.Error(w, "invalid or expired token", http.StatusUnauthorized)
 				return
