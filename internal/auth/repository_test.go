@@ -181,7 +181,7 @@ func newTestUser(t *testing.T) *auth.User {
 	return user
 }
 
-func newTestRepository(t *testing.T) *auth.Repository {
+func newTestRepository(t *testing.T) *auth.PostgresRepository {
 	t.Helper()
 
 	cfg, err := config.Load()

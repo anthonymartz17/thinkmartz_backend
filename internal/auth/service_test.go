@@ -28,7 +28,7 @@ func TestRegister_PasswordTooLong(t *testing.T) {
 	ctx := t.Context()
 
 	ctrl := gomock.NewController(t)
-	mockRepo := mocks.NewMockUserRepository(ctrl)
+	mockRepo := mocks.NewMockRepository(ctrl)
 	mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 	logger := zap.NewNop()
 
@@ -45,7 +45,7 @@ func TestRegister(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 
 		input := auth.RegisterInput{
@@ -95,7 +95,7 @@ func TestRegister(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 		input := auth.RegisterInput{
 			Email:    fmt.Sprintf("test@email.com%s", t.Name()),
@@ -120,7 +120,7 @@ func TestRegister(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 		input := auth.RegisterInput{
 			Email:    fmt.Sprintf("test@email.com%s", t.Name()),
@@ -168,7 +168,7 @@ func TestLogin(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 
 		email := fmt.Sprintf("test@email.com%s", t.Name())
@@ -214,7 +214,7 @@ func TestLogin(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 
 		email := fmt.Sprintf("test@email.com%s", t.Name())
@@ -239,7 +239,7 @@ func TestLogin(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 
 		email := fmt.Sprintf("test@email.com%s", t.Name())
@@ -273,7 +273,7 @@ func TestLogin(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 
 		email := fmt.Sprintf("test@email.com%s", t.Name())
@@ -313,7 +313,7 @@ func TestLogin(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 
 		email := fmt.Sprintf("test@email.com%s", t.Name())
@@ -359,7 +359,7 @@ func TestRefreshToken(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 
 		userID := uuid.New()
@@ -395,7 +395,7 @@ func TestRefreshToken(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 
 		mockTokenSrv.EXPECT().
@@ -416,7 +416,7 @@ func TestRefreshToken(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 
 		userID := uuid.New()
@@ -443,7 +443,7 @@ func TestRefreshToken(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 
 		userID := uuid.New()
@@ -474,7 +474,7 @@ func TestRefreshToken(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 
 		userID := uuid.New()
@@ -512,7 +512,7 @@ func TestLogout(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 
 		mockTokenSrv.EXPECT().
@@ -532,7 +532,7 @@ func TestLogout(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 
 		mockTokenSrv.EXPECT().
@@ -552,7 +552,7 @@ func TestLogout(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockUserRepository(ctrl)
+		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 
 		mockTokenSrv.EXPECT().
