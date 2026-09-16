@@ -18,15 +18,15 @@ var (
 var _ Authenticator = (*Service)(nil)
 
 // Service handles Auth business logic — user registration, login,
-// and JWT issuing — by orchestrating calls to a UserRepository.
+// and JWT issuing — by orchestrating calls to a Repository.
 type Service struct {
-	repo   UserRepository
+	repo   Repository
 	token  TokenIssuer
 	logger *zap.Logger
 }
 
 // NewService creates a new Service
-func NewService(r UserRepository, t TokenIssuer, l *zap.Logger) *Service {
+func NewService(r Repository, t TokenIssuer, l *zap.Logger) *Service {
 	return &Service{
 		repo:   r,
 		token:  t,
@@ -63,7 +63,7 @@ type Response struct {
 	TokenPair TokenPair
 }
 
-// Register hashes the password, intantiates a new user and saves it using UserRepository methods
+// Register hashes the password, intantiates a new user and saves it using Repository methods
 func (s *Service) Register(ctx context.Context, input RegisterInput) (*Response, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 

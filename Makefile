@@ -28,13 +28,13 @@ lint:
 	golangci-lint run ./...
 
 mocks:
-	mockgen -source=internal/auth/repository_interface.go \
+	mockgen -source=internal/auth/repository.go \
 		-destination=internal/auth/mocks/mock_repository.go \
 		-package=mocks
-	mockgen -source=internal/auth/tokenservice_interface.go \
+	mockgen -source=internal/auth/tokenissuer.go \
 		-destination=internal/auth/mocks/mock_tokenservice.go \
 		-package=mocks
-	mockgen -source=internal/auth/service_interface.go \
+	mockgen -source=internal/auth/authenticator.go \
 		-destination=internal/auth/mocks/mock_service.go \
 		-package=mocks
 
