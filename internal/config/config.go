@@ -22,8 +22,9 @@ type Config struct {
 
 // AppConfig holds server-level settings.
 type AppConfig struct {
-	Env  string
-	Port int
+	Env                         string
+	Port                        int
+	CelebrityFollowersThreshold int
 }
 
 // DBConfig holds PostgreSQL connection settings.
@@ -64,6 +65,11 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid PORT: %w", err)
 	}
 
+	threshold, err := strconv.Atoi(getEnv("CELEBRITY_FOLLOWERS_THRESHOLD", "1000000"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid celebrity follower threshold: %w", err)
+	}
+
 	dbPort, err := strconv.Atoi(getEnv("DB_PORT", "5432"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid DB_PORT: %w", err)
@@ -99,8 +105,9 @@ func Load() (*Config, error) {
 
 	cfg := &Config{
 		App: AppConfig{
-			Env:  getEnv("APP_ENV", "development"),
-			Port: port,
+			Env:                         getEnv("APP_ENV", "development"),
+			Port:                        port,
+			CelebrityFollowersThreshold: threshold,
 		},
 		DB: DBConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
