@@ -144,6 +144,16 @@ func NewAppConfig(cfg *Config) AppConfig {
 	return cfg.App
 }
 
+// CelebrityFollowersThreshold is a distinct type wrapping int so this value
+// doesn't collide with any other int provided in the fx dependency graph.
+type CelebrityFollowersThreshold int
+
+// ProvideCelebrityThreshold extracts the celebrity follower threshold from
+// AppConfig so post.Service can depend on just the value it needs.
+func ProvideCelebrityThreshold(appConfig AppConfig) CelebrityFollowersThreshold {
+	return CelebrityFollowersThreshold(appConfig.CelebrityFollowersThreshold)
+}
+
 // NewRedisConfig extracts RedisConfig from Config so fx providers can
 // depend on just the Redis settings rather than the whole Config.
 func NewRedisConfig(cfg *Config) RedisConfig {
