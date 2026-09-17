@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN is_celebrity BOOLEAN NOT NULL DEFAULT false;
