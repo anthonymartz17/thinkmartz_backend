@@ -94,5 +94,5 @@ func newTestRepository(t *testing.T) post.Repository {
 	pool, err := database.NewPool(t.Context(), cfg.DB)
 	require.NoError(t, err, "failed to create database pool")
 
-	return post.NewRepository(pool)
+	return post.NewPostgresRepository(pool)
 }
