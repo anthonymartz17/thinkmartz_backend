@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -43,4 +44,52 @@ func (r *PostgresRepository) Save(ctx context.Context, p *Post) error {
 	}
 
 	return nil
+}
+
+// GetFollowersByID returns the IDs of every user following the given userID.
+func (r *PostgresRepository) GetFollowersByID(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	query := `
+		SELECT follower_id
+		FROM follows
+		WHERE followee_id = $1
+	`
+
+	var followerIDs []uuid.UUID
+
+	rows, err := r.Pool.Query(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("query followers: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id uuid.UUID
+
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan follower id: %w", err)
+		}
+
+		followerIDs = append(followerIDs, id)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate followers: %w", err)
+	}
+
+	return followerIDs, nil
+}
+
+// CountFollowers  returns the number of followers a user has by userID
+func (r *PostgresRepository) CountFollowers(ctx context.Context, userID uuid.UUID) (int, error) {
+
+	query := `
+		SELECT COUNT(*)
+		FROM follows 
+		WHERE followee_id = $1
+	`
+	var count int
+	if err := r.Pool.QueryRow(ctx, query, userID).Scan(&count); err != nil {
+		return 0, fmt.Errorf("count followers: %w", err)
+	}
+	return count, nil
 }
