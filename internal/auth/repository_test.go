@@ -9,36 +9,38 @@ import (
 	"github.com/anthonymartz17/thinkmartz_backend/internal/config"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/database"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRepository_Save_Success(t *testing.T) {
-	// 1. Arrange: set up the real dependency
+func TestRepository_Save(t *testing.T) {
 
-	repo := newTestRepository(t)
-	user := newTestUser(t)
+	t.Run("Success", func(t *testing.T) {
+		// 1. Arrange: set up the real dependency
+		pool := newTestPool(t)
+		repo := auth.NewPostgresRepository(pool)
+		user := newTestUser(t)
 
-	// 2. Act: call the method you're testing
-	gotErr := repo.Save(t.Context(), user)
+		// 2. Act: call the method you're testing
+		gotErr := repo.Save(t.Context(), user)
 
-	// 3. Assert: check the result is what you expect
-	assert.NoError(t, gotErr, "gotErr should be nil")
-	assert.NotEqual(t, uuid.Nil, user.ID, "ID should not be UUID zero value")
-	assert.False(t, user.CreatedAt.IsZero(), "Timestamp should not be zero")
+		// 3. Assert: check the result is what you expect
+		assert.NoError(t, gotErr, "gotErr should be nil")
+		assert.NotEqual(t, uuid.Nil, user.ID, "ID should not be UUID zero value")
+		assert.False(t, user.CreatedAt.IsZero(), "Timestamp should not be zero")
 
-	t.Cleanup(func() {
-		_, err := repo.Pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, user.ID)
-		if err != nil {
-			t.Logf("cleanup failed: %v", err)
-		}
+		t.Cleanup(func() {
+			_, err := pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, user.ID)
+			if err != nil {
+				t.Logf("cleanup failed: %v", err)
+			}
+		})
 	})
-}
-
-func TestRepository_Save_Duplicate(t *testing.T) {
 	t.Run("duplicate email", func(t *testing.T) {
 		// arrange
-		repo := newTestRepository(t)
+		pool := newTestPool(t)
+		repo := auth.NewPostgresRepository(pool)
 		ctx := t.Context()
 		first := newTestUser(t)
 		firstErr := repo.Save(ctx, first)
@@ -57,7 +59,7 @@ func TestRepository_Save_Duplicate(t *testing.T) {
 		assert.ErrorIs(t, gotErr, auth.ErrEmailAlreadyExists, "error should equal ErrEmailAlreadyExists")
 
 		t.Cleanup(func() {
-			_, err := repo.Pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, first.ID)
+			_, err := pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, first.ID)
 
 			if err != nil {
 				t.Logf("cleanup failed: %v", err)
@@ -67,7 +69,8 @@ func TestRepository_Save_Duplicate(t *testing.T) {
 
 	t.Run("duplicate username", func(t *testing.T) {
 		// arrange
-		repo := newTestRepository(t)
+		pool := newTestPool(t)
+		repo := auth.NewPostgresRepository(pool)
 		ctx := t.Context()
 		first := newTestUser(t)
 		firstErr := repo.Save(ctx, first)
@@ -86,7 +89,7 @@ func TestRepository_Save_Duplicate(t *testing.T) {
 		assert.ErrorIs(t, gotErr, auth.ErrUsernameAlreadyExists, "error should equal ErrUsernameAlreadyExists")
 
 		t.Cleanup(func() {
-			_, err := repo.Pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, first.ID)
+			_, err := pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, first.ID)
 
 			if err != nil {
 				t.Logf("cleanup failed: %v", err)
@@ -95,78 +98,84 @@ func TestRepository_Save_Duplicate(t *testing.T) {
 	})
 }
 
-func TestFindByEmail_Success(t *testing.T) {
-	// arrange
-	ctx := t.Context()
-	repo := newTestRepository(t)
-	user := newTestUser(t)
+func TestFindByEmail(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		pool := newTestPool(t)
+		repo := auth.NewPostgresRepository(pool)
+		user := newTestUser(t)
 
-	err := repo.Save(ctx, user)
-	require.NoError(t, err, "should not fail setting up fake user")
+		err := repo.Save(ctx, user)
+		require.NoError(t, err, "should not fail setting up fake user")
 
-	// act
-	gotUser, gotErr := repo.FindByEmail(ctx, user.Email)
+		// act
+		gotUser, gotErr := repo.FindByEmail(ctx, user.Email)
 
-	// assert
-	assert.NoError(t, gotErr, "should not fail to find an exisiting user by email")
-	assert.Equal(t, user.ID, gotUser.ID, "should match expected user ID")
-	assert.Equal(t, user.Email, gotUser.Email, "should match expected user Email")
-	assert.Equal(t, user.PasswordHash, gotUser.PasswordHash, "should match expected user PasswordHash")
-	assert.Equal(t, user.Username, gotUser.Username, "should match expected user Username")
-	assert.Equal(t, user.CreatedAt, gotUser.CreatedAt, "should match expected user CreatedAt")
+		// assert
+		assert.NoError(t, gotErr, "should not fail to find an exisiting user by email")
+		assert.Equal(t, user.ID, gotUser.ID, "should match expected user ID")
+		assert.Equal(t, user.Email, gotUser.Email, "should match expected user Email")
+		assert.Equal(t, user.PasswordHash, gotUser.PasswordHash, "should match expected user PasswordHash")
+		assert.Equal(t, user.Username, gotUser.Username, "should match expected user Username")
+		assert.Equal(t, user.CreatedAt, gotUser.CreatedAt, "should match expected user CreatedAt")
 
-	t.Cleanup(func() {
-		_, err := repo.Pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, gotUser.ID)
+		t.Cleanup(func() {
+			_, err := pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, gotUser.ID)
 
-		if err != nil {
-			t.Logf("cleanup failed: %v", err)
+			if err != nil {
+				t.Logf("cleanup failed: %v", err)
 
-		}
+			}
+		})
+	})
+	t.Run("Not found", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		pool := newTestPool(t)
+		repo := auth.NewPostgresRepository(pool)
+
+		// act
+		gotUser, gotErr := repo.FindByEmail(ctx, "test@email.com")
+		// assert
+		assert.Nil(t, gotUser, "expected nil for gotUser")
+		assert.Error(t, gotErr, "expected a not found error for non-existing user")
+	})
+}
+
+func TestDelete(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		pool := newTestPool(t)
+		repo := auth.NewPostgresRepository(pool)
+		user := newTestUser(t)
+
+		err := repo.Save(ctx, user)
+		require.NoError(t, err, "should not fail to save fake user")
+
+		// act
+		gotErr := repo.Delete(ctx, user.ID)
+		_, gotFindByEmailErr := repo.FindByEmail(ctx, user.Email)
+
+		// assert
+		assert.NoError(t, gotErr, "should delete existing user successfully")
+		assert.ErrorIs(t, gotFindByEmailErr, auth.ErrUserNotFound, "Expected ErrUserNotFound after successful deletion")
 	})
 
-}
+	t.Run("Not found", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		pool := newTestPool(t)
+		repo := auth.NewPostgresRepository(pool)
+		nonExistentID := uuid.New()
 
-func TestFindByEmail_NotFound(t *testing.T) {
-	// arrange
-	ctx := t.Context()
-	repo := newTestRepository(t)
+		// act
+		gotErr := repo.Delete(ctx, nonExistentID)
 
-	// act
-	gotUser, gotErr := repo.FindByEmail(ctx, "test@email.com")
-	// assert
-	assert.Nil(t, gotUser, "expected nil for gotUser")
-	assert.Error(t, gotErr, "expected a not found error for non-existing user")
-
-}
-func TestDelete_Success(t *testing.T) {
-	// arrange
-	ctx := t.Context()
-	repo := newTestRepository(t)
-	user := newTestUser(t)
-
-	err := repo.Save(ctx, user)
-	require.NoError(t, err, "should not fail to save fake user")
-
-	// act
-	gotErr := repo.Delete(ctx, user.ID)
-	_, gotFindByEmailErr := repo.FindByEmail(ctx, user.Email)
-
-	// assert
-	assert.NoError(t, gotErr, "should delete existing user successfully")
-	assert.ErrorIs(t, gotFindByEmailErr, auth.ErrUserNotFound, "Expected ErrUserNotFound after successful deletion")
-
-}
-func TestDelete_NotFound(t *testing.T) {
-	// arrange
-	ctx := t.Context()
-	repo := newTestRepository(t)
-	nonExistentID := uuid.New()
-
-	// act
-	gotErr := repo.Delete(ctx, nonExistentID)
-
-	// assert
-	assert.ErrorIs(t, gotErr, auth.ErrUserNotFound, "expected ErrUserNotFound specifically")
+		// assert
+		assert.ErrorIs(t, gotErr, auth.ErrUserNotFound, "expected ErrUserNotFound specifically")
+	})
 
 }
 
@@ -181,7 +190,7 @@ func newTestUser(t *testing.T) *auth.User {
 	return user
 }
 
-func newTestRepository(t *testing.T) *auth.PostgresRepository {
+func newTestPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 
 	cfg, err := config.Load()
@@ -190,5 +199,5 @@ func newTestRepository(t *testing.T) *auth.PostgresRepository {
 	pool, err := database.NewPool(t.Context(), cfg.DB)
 	require.NoError(t, err, "Failed to create database pool")
 
-	return auth.NewRepository(pool)
+	return pool
 }
