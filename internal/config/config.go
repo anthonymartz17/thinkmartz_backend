@@ -22,8 +22,9 @@ type Config struct {
 
 // AppConfig holds server-level settings.
 type AppConfig struct {
-	Env  string
-	Port int
+	Env                         string
+	Port                        int
+	CelebrityFollowersThreshold int
 }
 
 // DBConfig holds PostgreSQL connection settings.
@@ -64,6 +65,11 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid PORT: %w", err)
 	}
 
+	threshold, err := strconv.Atoi(getEnv("CELEBRITY_FOLLOWERS_THRESHOLD", "1000000"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid celebrity follower threshold: %w", err)
+	}
+
 	dbPort, err := strconv.Atoi(getEnv("DB_PORT", "5432"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid DB_PORT: %w", err)
@@ -99,8 +105,9 @@ func Load() (*Config, error) {
 
 	cfg := &Config{
 		App: AppConfig{
-			Env:  getEnv("APP_ENV", "development"),
-			Port: port,
+			Env:                         getEnv("APP_ENV", "development"),
+			Port:                        port,
+			CelebrityFollowersThreshold: threshold,
 		},
 		DB: DBConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
@@ -135,6 +142,16 @@ func NewJWTConfig(cfg *Config) JWTConfig {
 // on just the app-level settings rather than the whole Config.
 func NewAppConfig(cfg *Config) AppConfig {
 	return cfg.App
+}
+
+// CelebrityFollowersThreshold is a distinct type wrapping int so this value
+// doesn't collide with any other int provided in the fx dependency graph.
+type CelebrityFollowersThreshold int
+
+// ProvideCelebrityThreshold extracts the celebrity follower threshold from
+// AppConfig so post.Service can depend on just the value it needs.
+func ProvideCelebrityThreshold(appConfig AppConfig) CelebrityFollowersThreshold {
+	return CelebrityFollowersThreshold(appConfig.CelebrityFollowersThreshold)
 }
 
 // NewRedisConfig extracts RedisConfig from Config so fx providers can
