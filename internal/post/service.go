@@ -2,6 +2,7 @@ package post
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anthonymartz17/thinkmartz_backend/internal/config"
 	"github.com/google/uuid"
@@ -10,19 +11,19 @@ import (
 
 // Service handles post business logic orchestrating interaction with Repository and RedisRepository
 type Service struct {
-	repo               Repository
-	feedRepo           FeedRepository
-	celebrityThreshold config.CelebrityFollowersThreshold
-	logger             *zap.Logger
+	repo                        Repository
+	feedRepo                    FeedRepository
+	CelebrityFollowersThreshold config.CelebrityFollowersThreshold
+	logger                      *zap.Logger
 }
 
 // NewService creates a new instance of Service
 func NewService(repo Repository, feedRepo FeedRepository, threshold config.CelebrityFollowersThreshold, logger *zap.Logger) *Service {
 	return &Service{
-		repo:               repo,
-		feedRepo:           feedRepo,
-		celebrityThreshold: threshold,
-		logger:             logger,
+		repo:                        repo,
+		feedRepo:                    feedRepo,
+		CelebrityFollowersThreshold: threshold,
+		logger:                      logger,
 	}
 }
 
@@ -38,7 +39,7 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, content string) 
 	}
 
 	if err := s.repo.Save(ctx, post); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("save post: %w", err)
 	}
 
 	count, err := s.repo.CountFollowers(ctx, userID)
@@ -47,7 +48,7 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, content string) 
 		return post, nil
 	}
 
-	if count >= int(s.celebrityThreshold) {
+	if count >= int(s.CelebrityFollowersThreshold) {
 		return post, nil
 	}
 

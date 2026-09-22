@@ -29,7 +29,7 @@ func (r *RedisRepository) AddToFeed(ctx context.Context, p Post, followerIDs []u
 
 	score := float64(p.CreatedAt.Unix())
 	for _, followerID := range followerIDs {
-		key := feedKey(followerID)
+		key := FeedKey(followerID)
 		pipe.ZAdd(ctx, key, redis.Z{Score: score, Member: p.ID.String()})
 	}
 
@@ -41,6 +41,7 @@ func (r *RedisRepository) AddToFeed(ctx context.Context, p Post, followerIDs []u
 	return nil
 }
 
-func feedKey(userID uuid.UUID) string {
+// FeedKey returns the Redis key holding a user's feed sorted set.
+func FeedKey(userID uuid.UUID) string {
 	return fmt.Sprintf("feed:user:%s", userID.String())
 }

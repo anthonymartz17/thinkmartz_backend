@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	post "github.com/anthonymartz17/thinkmartz_backend/internal/post"
+	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -39,6 +40,36 @@ func NewMockRepository(ctrl *gomock.Controller) *MockRepository {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
+}
+
+// CountFollowers mocks base method.
+func (m *MockRepository) CountFollowers(ctx context.Context, userID uuid.UUID) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountFollowers", ctx, userID)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountFollowers indicates an expected call of CountFollowers.
+func (mr *MockRepositoryMockRecorder) CountFollowers(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountFollowers", reflect.TypeOf((*MockRepository)(nil).CountFollowers), ctx, userID)
+}
+
+// GetFollowersByID mocks base method.
+func (m *MockRepository) GetFollowersByID(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetFollowersByID", ctx, userID)
+	ret0, _ := ret[0].([]uuid.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetFollowersByID indicates an expected call of GetFollowersByID.
+func (mr *MockRepositoryMockRecorder) GetFollowersByID(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFollowersByID", reflect.TypeOf((*MockRepository)(nil).GetFollowersByID), ctx, userID)
 }
 
 // Save mocks base method.
