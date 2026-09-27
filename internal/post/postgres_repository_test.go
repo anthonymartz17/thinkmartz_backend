@@ -173,6 +173,57 @@ func TestGetFollowersByID(t *testing.T) {
 	})
 }
 
+func TestGetByID(t *testing.T) {
+	t.Run("not found", func(t *testing.T) {
+		// arrange
+		pool := newTestPool(t)
+		repo := post.NewPostgresRepository(pool)
+		ctx := t.Context()
+
+		// act
+		gotPost, gotErr := repo.GetByID(ctx, uuid.New())
+
+		// assert
+		assert.Nil(t, gotPost)
+		assert.ErrorIs(t, gotErr, post.ErrPostNotFound)
+	})
+
+	t.Run("context cancelled", func(t *testing.T) {
+		// arrange
+		pool := newTestPool(t)
+		repo := post.NewPostgresRepository(pool)
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+
+		// act
+		_, gotErr := repo.GetByID(ctx, uuid.New())
+
+		// assert
+		assert.Error(t, gotErr, "should fail when context is already cancelled")
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		pool := newTestPool(t)
+		repo := post.NewPostgresRepository(pool)
+		user := newTestUser(ctx, t, pool)
+		wantPost := newTestPost(t, user.ID)
+		require.NoError(t, repo.Save(ctx, wantPost), "failed to seed post")
+
+		// act
+		gotPost, gotErr := repo.GetByID(ctx, wantPost.ID)
+
+		// assert
+		assert.NoError(t, gotErr)
+		assert.Equal(t, wantPost.ID, gotPost.ID)
+		assert.Equal(t, wantPost.UserID, gotPost.UserID)
+		assert.Equal(t, wantPost.Content, gotPost.Content)
+		assert.Equal(t, wantPost.CreatedAt, gotPost.CreatedAt)
+		assert.Equal(t, wantPost.UpdatedAt, gotPost.UpdatedAt)
+	})
+}
+
 func newTestPost(t *testing.T, userID uuid.UUID) *post.Post {
 	t.Helper()
 
