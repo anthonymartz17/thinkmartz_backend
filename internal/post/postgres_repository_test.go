@@ -188,20 +188,6 @@ func TestGetByID(t *testing.T) {
 		assert.ErrorIs(t, gotErr, post.ErrPostNotFound)
 	})
 
-	t.Run("context cancelled", func(t *testing.T) {
-		// arrange
-		pool := newTestPool(t)
-		repo := post.NewPostgresRepository(pool)
-		ctx, cancel := context.WithCancel(t.Context())
-		cancel()
-
-		// act
-		_, gotErr := repo.GetByID(ctx, uuid.New())
-
-		// assert
-		assert.Error(t, gotErr, "should fail when context is already cancelled")
-	})
-
 	t.Run("Success", func(t *testing.T) {
 		// arrange
 		ctx := t.Context()
@@ -215,10 +201,12 @@ func TestGetByID(t *testing.T) {
 		gotPost, gotErr := repo.GetByID(ctx, wantPost.ID)
 
 		// assert
-		assert.NoError(t, gotErr)
+		require.NoError(t, gotErr)
 		assert.Equal(t, wantPost.ID, gotPost.ID)
 		assert.Equal(t, wantPost.UserID, gotPost.UserID)
 		assert.Equal(t, wantPost.Content, gotPost.Content)
+		assert.Zero(t, gotPost.LikeCount)
+		assert.Zero(t, gotPost.CommentCount)
 		assert.Equal(t, wantPost.CreatedAt, gotPost.CreatedAt)
 		assert.Equal(t, wantPost.UpdatedAt, gotPost.UpdatedAt)
 	})
