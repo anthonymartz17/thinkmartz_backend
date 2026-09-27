@@ -2,17 +2,21 @@ package post
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/middleware"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/response"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 const (
 	msgInvalidRequest = "invalid request"
 	msgInternalServer = "internal server error"
+	msgInvalidPostID  = "invalid post id"
+	msgPostNotFound   = "post not found"
 )
 
 // CreateInput is the decoded request body for Handler.Create.
@@ -23,14 +27,14 @@ type CreateInput struct {
 // Handler is the post domain's HTTP layer.
 type Handler struct {
 	Service Service
-	Logger  *zap.Logger
+	logger  *zap.Logger
 }
 
 // NewHandler creates a new instance of Handler
 func NewHandler(m Service, logger *zap.Logger) *Handler {
 	return &Handler{
 		Service: m,
-		Logger:  logger,
+		logger:  logger,
 	}
 }
 
@@ -54,7 +58,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 	if !ok {
 		response.WriteError(w, http.StatusInternalServerError, msgInternalServer)
-		h.Logger.Error("failed to extract userID from context")
+		h.logger.Error("failed to extract userID from context")
 		return
 	}
 
@@ -62,16 +66,44 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, msgInternalServer)
-		h.Logger.Error("failed to create post", zap.Error(err))
+		h.logger.Error("failed to create post", zap.Error(err))
 		return
 	}
 
 	if err := response.WriteJSON(w, http.StatusCreated, post); err != nil {
-		h.Logger.Error("failed to encode create post response", zap.Error(err))
+		h.logger.Error("failed to encode create post response", zap.Error(err))
 	}
+}
+
+// GetByID resolves the post ID from the route and returns the matching post.
+func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
+	postID, err := uuid.Parse(chi.URLParam(r, "postID"))
+
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, msgInvalidPostID)
+		return
+	}
+
+	post, err := h.Service.GetByID(r.Context(), postID)
+
+	if err != nil {
+		if errors.Is(err, ErrPostNotFound) {
+			response.WriteError(w, http.StatusNotFound, msgPostNotFound)
+			return
+		}
+		h.logger.Error("get post by id", zap.Stringer("post_id", postID), zap.Error(err))
+		response.WriteError(w, http.StatusInternalServerError, msgInternalServer)
+		return
+	}
+
+	if err := response.WriteJSON(w, http.StatusOK, post); err != nil {
+		h.logger.Error("failed to encode GetByID response", zap.Error(err))
+	}
+
 }
 
 // RegisterProtectedRoutes registers Handler's protected routes
 func (h *Handler) RegisterProtectedRoutes(r chi.Router) {
-	r.Post("/post", h.Create)
+	r.Post("/posts", h.Create)
+	r.Get("/posts/{postID}", h.GetByID)
 }
