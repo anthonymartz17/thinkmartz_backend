@@ -57,6 +57,21 @@ func (mr *MockRepositoryMockRecorder) CountFollowers(ctx, userID any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountFollowers", reflect.TypeOf((*MockRepository)(nil).CountFollowers), ctx, userID)
 }
 
+// GetByID mocks base method.
+func (m *MockRepository) GetByID(ctx context.Context, postID uuid.UUID) (*post.Post, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByID", ctx, postID)
+	ret0, _ := ret[0].(*post.Post)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByID indicates an expected call of GetByID.
+func (mr *MockRepositoryMockRecorder) GetByID(ctx, postID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockRepository)(nil).GetByID), ctx, postID)
+}
+
 // GetFollowersByID mocks base method.
 func (m *MockRepository) GetFollowersByID(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
 	m.ctrl.T.Helper()

@@ -68,3 +68,7 @@ func (s *service) Create(ctx context.Context, userID uuid.UUID, content string) 
 
 	return post, nil
 }
+
+func (s *service) GetByID(ctx context.Context, postID uuid.UUID) (*Post, error) {
+	return s.repo.GetByID(ctx, postID)
+}
