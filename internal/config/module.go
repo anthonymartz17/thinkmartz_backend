@@ -12,4 +12,5 @@ var Module = fx.Module("config",
 	fx.Provide(NewDBConfig),
 	fx.Provide(NewRedisConfig),
 	fx.Provide(NewJWTConfig),
+	fx.Provide(ProvideCelebrityThreshold),
 )

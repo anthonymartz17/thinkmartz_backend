@@ -37,6 +37,12 @@ mocks:
 	mockgen -source=internal/auth/authenticator.go \
 		-destination=internal/auth/mocks/mock_service.go \
 		-package=mocks
+	mockgen -source=internal/post/repository.go \
+		-destination=internal/post/mocks/mock_repository.go \
+		-package=mocks
+	mockgen -source=internal/post/feed_repository.go \
+		-destination=internal/post/mocks/mock_feed_repository.go \
+		-package=mocks
 
 ## --- Docker ---
 
