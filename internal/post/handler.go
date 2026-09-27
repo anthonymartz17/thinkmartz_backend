@@ -6,6 +6,7 @@ import (
 
 	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/middleware"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/response"
+	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
 
@@ -68,4 +69,9 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if err := response.WriteJSON(w, http.StatusCreated, post); err != nil {
 		h.Logger.Error("failed to encode create post response", zap.Error(err))
 	}
+}
+
+// RegisterProtectedRoutes registers Handler's protected routes
+func (h *Handler) RegisterProtectedRoutes(r chi.Router) {
+	r.Post("/post", h.Create)
 }

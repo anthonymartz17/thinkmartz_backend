@@ -51,7 +51,7 @@ func AuthMiddleware(jwtConfig config.JWTConfig) func(http.Handler) http.Handler 
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), userIDKey, userID)
+			ctx := ContextWithUserID(r.Context(), userID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -62,4 +62,9 @@ func AuthMiddleware(jwtConfig config.JWTConfig) func(http.Handler) http.Handler 
 func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
 	id, ok := ctx.Value(userIDKey).(uuid.UUID)
 	return id, ok
+}
+
+// ContextWithUserID returns a copy of ctx carrying userID the way AuthMiddleware would set it, for tests that need to simulate an authenticated request.
+func ContextWithUserID(ctx context.Context, userID uuid.UUID) context.Context {
+	return context.WithValue(ctx, userIDKey, userID)
 }
