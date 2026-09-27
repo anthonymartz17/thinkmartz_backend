@@ -32,7 +32,8 @@ func TestRegister_PasswordTooLong(t *testing.T) {
 	mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
 	logger := zap.NewNop()
 
-	newService := auth.NewService(mockRepo, mockTokenSrv, logger)
+	newService, err := auth.NewService(mockRepo, mockTokenSrv, logger)
+	require.NoError(t, err, "failed to construct Service")
 
 	// act
 	_, gotErr := newService.Register(ctx, input)
@@ -80,7 +81,8 @@ func TestRegister(t *testing.T) {
 			})).
 			Return("FAKE-REFRESH-TOKEN", nil)
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		// act
 		gotAuthResp, err := svc.Register(ctx, input)
@@ -107,10 +109,11 @@ func TestRegister(t *testing.T) {
 			Save(ctx, gomock.Any()).
 			Return(errors.New("database failure"))
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		// act
-		_, err := svc.Register(ctx, input)
+		_, err = svc.Register(ctx, input)
 
 		// assert
 		assert.ErrorContains(t, err, "database failure")
@@ -153,10 +156,11 @@ func TestRegister(t *testing.T) {
 			})).
 			Return(nil)
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		// act
-		_, err := svc.Register(ctx, input)
+		_, err = svc.Register(ctx, input)
 
 		// assert
 		assert.ErrorContains(t, err, "refresh token: refresh token service unavailable")
@@ -196,7 +200,8 @@ func TestLogin(t *testing.T) {
 			IssueRefreshToken(ctx, userID).
 			Return("FAKE-REFRESH-TOKEN", nil)
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		input := auth.LoginInput{Email: email, Password: password}
 
@@ -223,7 +228,8 @@ func TestLogin(t *testing.T) {
 			FindByEmail(ctx, email).
 			Return(nil, auth.ErrUserNotFound)
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		input := auth.LoginInput{Email: email, Password: "whatever"}
 
@@ -257,7 +263,8 @@ func TestLogin(t *testing.T) {
 			FindByEmail(ctx, email).
 			Return(storedUser, nil)
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		input := auth.LoginInput{Email: email, Password: "wrong-password"}
 
@@ -297,7 +304,8 @@ func TestLogin(t *testing.T) {
 			IssueAccessToken(userID).
 			Return("", errors.New("access token service unavailable"))
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		input := auth.LoginInput{Email: email, Password: password}
 
@@ -341,7 +349,8 @@ func TestLogin(t *testing.T) {
 			IssueRefreshToken(ctx, userID).
 			Return("", errors.New("refresh token service unavailable"))
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		input := auth.LoginInput{Email: email, Password: password}
 
@@ -380,7 +389,8 @@ func TestRefreshToken(t *testing.T) {
 			InvalidateRefreshToken(ctx, "old-opaque-token").
 			Return(nil)
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		// act
 		gotTokenPair, gotErr := svc.RefreshToken(ctx, "old-opaque-token")
@@ -402,7 +412,8 @@ func TestRefreshToken(t *testing.T) {
 			ValidateRefreshToken(ctx, "bad-opaque-token").
 			Return(uuid.Nil, auth.ErrRefreshTokenNotFound)
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		// act
 		gotTokenPair, gotErr := svc.RefreshToken(ctx, "bad-opaque-token")
@@ -429,7 +440,8 @@ func TestRefreshToken(t *testing.T) {
 			IssueAccessToken(userID).
 			Return("", errors.New("access token service unavailable"))
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		// act
 		gotTokenPair, gotErr := svc.RefreshToken(ctx, "old-opaque-token")
@@ -460,7 +472,8 @@ func TestRefreshToken(t *testing.T) {
 			IssueRefreshToken(ctx, userID).
 			Return("", errors.New("refresh token service unavailable"))
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		// act
 		gotTokenPair, gotErr := svc.RefreshToken(ctx, "old-opaque-token")
@@ -495,7 +508,8 @@ func TestRefreshToken(t *testing.T) {
 			InvalidateRefreshToken(ctx, "old-opaque-token").
 			Return(errors.New("redis unavailable"))
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		// act
 		gotTokenPair, gotErr := svc.RefreshToken(ctx, "old-opaque-token")
@@ -519,7 +533,8 @@ func TestLogout(t *testing.T) {
 			InvalidateRefreshToken(ctx, "old-opaque-token").
 			Return(nil)
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		// act
 		gotErr := svc.Logout(ctx, "old-opaque-token")
@@ -539,7 +554,8 @@ func TestLogout(t *testing.T) {
 			InvalidateRefreshToken(ctx, "unknown-opaque-token").
 			Return(auth.ErrRefreshTokenNotFound)
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		// act
 		gotErr := svc.Logout(ctx, "unknown-opaque-token")
@@ -559,7 +575,8 @@ func TestLogout(t *testing.T) {
 			InvalidateRefreshToken(ctx, "old-opaque-token").
 			Return(errors.New("redis unavailable"))
 
-		svc := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
 
 		// act
 		gotErr := svc.Logout(ctx, "old-opaque-token")

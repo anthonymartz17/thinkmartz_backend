@@ -9,6 +9,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const _bcryptCost = bcrypt.DefaultCost
+
 var (
 	// ErrInvalidPassword indicates the provided password did not match the stored hash.
 	ErrInvalidPassword = errors.New("password is invalid")
@@ -23,15 +25,27 @@ type Service struct {
 	repo   Repository
 	token  TokenIssuer
 	logger *zap.Logger
+	// dummyHash is a constant-cost stand-in compared against on a not-found
+	// user, so login timing doesn't reveal whether the email exists.
+	dummyHash []byte
 }
 
 // NewService creates a new Service
-func NewService(r Repository, t TokenIssuer, l *zap.Logger) *Service {
-	return &Service{
-		repo:   r,
-		token:  t,
-		logger: l,
+func NewService(r Repository, t TokenIssuer, l *zap.Logger) (*Service, error) {
+
+	const dummyPassword = "timing-attack-guard"
+	dummyHash, err := bcrypt.GenerateFromPassword([]byte(dummyPassword), _bcryptCost)
+
+	if err != nil {
+		return nil, fmt.Errorf("generate dummy hash: %w", err)
 	}
+
+	return &Service{
+		repo:      r,
+		token:     t,
+		logger:    l,
+		dummyHash: dummyHash,
+	}, nil
 }
 
 // TokenPair contains both string tokens. avoids having to return two tokens of the same type that can be easily
@@ -49,7 +63,7 @@ type RegisterInput struct {
 	Password string
 }
 
-// LoginInput is the data Service.Login needs to create a new user,
+// LoginInput is the data Service.Login needs to sign in a user,
 // decoupled from the transport layer's request shape.
 type LoginInput struct {
 	Email    string
@@ -65,7 +79,7 @@ type Response struct {
 
 // Register hashes the password, intantiates a new user and saves it using Repository methods
 func (s *Service) Register(ctx context.Context, input RegisterInput) (*Response, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), _bcryptCost)
 
 	if err != nil {
 		return nil, fmt.Errorf("password hash: %w", err)
@@ -113,11 +127,20 @@ func (s *Service) Login(ctx context.Context, input LoginInput) (*Response, error
 	user, err := s.repo.FindByEmail(ctx, input.Email)
 
 	if err != nil {
+
+		if errors.Is(err, ErrUserNotFound) {
+			// timing attack guard
+			_ = bcrypt.CompareHashAndPassword(s.dummyHash, []byte(input.Password))
+		}
 		return nil, err
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
-		return nil, ErrInvalidPassword
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			return nil, ErrInvalidPassword
+		}
+
+		return nil, fmt.Errorf("compare password hash: %w", err)
 	}
 
 	accessToken, err := s.token.IssueAccessToken(user.ID)
