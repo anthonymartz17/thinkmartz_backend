@@ -173,7 +173,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		}
 
 		response.WriteError(w, http.StatusInternalServerError, msgInternalServer)
-		h.logger.Error(msgInternalServer, zap.Error(err))
+		h.logger.Error("login failed", zap.Error(err))
 		return
 	}
 
