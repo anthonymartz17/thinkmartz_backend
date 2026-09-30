@@ -173,6 +173,45 @@ func TestGetFollowersByID(t *testing.T) {
 	})
 }
 
+func TestGetByID(t *testing.T) {
+	t.Run("not found", func(t *testing.T) {
+		// arrange
+		pool := newTestPool(t)
+		repo := post.NewPostgresRepository(pool)
+		ctx := t.Context()
+
+		// act
+		gotPost, gotErr := repo.GetByID(ctx, uuid.New())
+
+		// assert
+		assert.Nil(t, gotPost)
+		assert.ErrorIs(t, gotErr, post.ErrPostNotFound)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		pool := newTestPool(t)
+		repo := post.NewPostgresRepository(pool)
+		user := newTestUser(ctx, t, pool)
+		wantPost := newTestPost(t, user.ID)
+		require.NoError(t, repo.Save(ctx, wantPost), "failed to seed post")
+
+		// act
+		gotPost, gotErr := repo.GetByID(ctx, wantPost.ID)
+
+		// assert
+		require.NoError(t, gotErr)
+		assert.Equal(t, wantPost.ID, gotPost.ID)
+		assert.Equal(t, wantPost.UserID, gotPost.UserID)
+		assert.Equal(t, wantPost.Content, gotPost.Content)
+		assert.Zero(t, gotPost.LikeCount)
+		assert.Zero(t, gotPost.CommentCount)
+		assert.Equal(t, wantPost.CreatedAt, gotPost.CreatedAt)
+		assert.Equal(t, wantPost.UpdatedAt, gotPost.UpdatedAt)
+	})
+}
+
 func newTestPost(t *testing.T, userID uuid.UUID) *post.Post {
 	t.Helper()
 

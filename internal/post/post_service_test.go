@@ -26,12 +26,7 @@ func TestService_Create(t *testing.T) {
 
 	t.Run("save fails", func(t *testing.T) {
 		// arrange
-		ctrl := gomock.NewController(t)
-		mockRepo := mocks.NewMockRepository(ctrl)
-		mockFeedRepo := mocks.NewMockFeedRepository(ctrl)
-		logger := zap.NewNop()
-		const celebrityFollowersThreshold config.CelebrityFollowersThreshold = 10
-		svc := post.NewService(mockRepo, mockFeedRepo, celebrityFollowersThreshold, logger)
+		svc, mockRepo := newTestService(t)
 
 		mockRepo.EXPECT().Save(ctx, &post.Post{UserID: userID, Content: content}).Return(saveErr)
 
@@ -47,10 +42,9 @@ func TestService_Create(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockFeedRepo := mocks.NewMockFeedRepository(ctrl)
+		const celebrityFollowersThreshold config.CelebrityFollowersThreshold = 10
 		core, logs := observer.New(zap.InfoLevel)
 		logger := zap.New(core)
-		const celebrityFollowersThreshold config.CelebrityFollowersThreshold = 10
-
 		svc := post.NewService(mockRepo, mockFeedRepo, celebrityFollowersThreshold, logger)
 
 		mockRepo.EXPECT().Save(ctx, &post.Post{UserID: userID, Content: content}).Return(nil)
@@ -147,4 +141,49 @@ func TestService_Create(t *testing.T) {
 		require.NoError(t, gotErr)
 		require.NotNil(t, gotPost)
 	})
+}
+
+func TestService_GetByID(t *testing.T) {
+	ctx := t.Context()
+	postID := uuid.New()
+
+	t.Run("success", func(t *testing.T) {
+		// arrange
+		svc, mockRepo := newTestService(t)
+
+		wantPost := &post.Post{ID: postID, Content: "hello world"}
+		mockRepo.EXPECT().GetByID(ctx, postID).Return(wantPost, nil)
+
+		// act
+		gotPost, gotErr := svc.GetByID(ctx, postID)
+
+		// assert
+		assert.NoError(t, gotErr)
+		assert.Equal(t, wantPost, gotPost)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		// arrange
+		svc, mockRepo := newTestService(t)
+		mockRepo.EXPECT().GetByID(ctx, postID).Return(nil, post.ErrPostNotFound)
+
+		// act
+		gotPost, gotErr := svc.GetByID(ctx, postID)
+
+		// assert
+		assert.Nil(t, gotPost)
+		assert.ErrorIs(t, gotErr, post.ErrPostNotFound)
+	})
+}
+
+func newTestService(t *testing.T) (post.Service, *mocks.MockRepository) {
+	t.Helper()
+
+	ctrl := gomock.NewController(t)
+	mockRepo := mocks.NewMockRepository(ctrl)
+	mockFeedRepo := mocks.NewMockFeedRepository(ctrl)
+	const threshold config.CelebrityFollowersThreshold = 10
+
+	svc := post.NewService(mockRepo, mockFeedRepo, threshold, zap.NewNop())
+	return svc, mockRepo
 }

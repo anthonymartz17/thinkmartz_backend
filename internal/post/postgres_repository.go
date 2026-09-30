@@ -3,10 +3,17 @@ package post
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var (
+	// ErrPostNotFound is returned when no post matches the given userID.
+	ErrPostNotFound = errors.New("post not found")
 )
 
 // Checks if  PostgresRepository implements Repository
@@ -92,4 +99,36 @@ func (r *PostgresRepository) CountFollowers(ctx context.Context, userID uuid.UUI
 		return 0, fmt.Errorf("count followers: %w", err)
 	}
 	return count, nil
+}
+
+// GetByID returns a single post that matches the given userID.
+func (r *PostgresRepository) GetByID(ctx context.Context, postID uuid.UUID) (*Post, error) {
+	query := `
+		SELECT id, user_id, content, like_count, comment_count, created_at, updated_at
+		FROM posts
+		WHERE id = $1
+	`
+
+	var post Post
+
+	err := r.Pool.QueryRow(ctx, query, postID).Scan(
+		&post.ID,
+		&post.UserID,
+		&post.Content,
+		&post.LikeCount,
+		&post.CommentCount,
+		&post.CreatedAt,
+		&post.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrPostNotFound
+		}
+		return nil, fmt.Errorf("get post by id: %w", err)
+
+	}
+
+	return &post, nil
+
 }
