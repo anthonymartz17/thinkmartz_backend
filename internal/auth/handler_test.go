@@ -11,6 +11,7 @@ import (
 
 	"github.com/anthonymartz17/thinkmartz_backend/internal/auth"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/auth/mocks"
+	"github.com/anthonymartz17/thinkmartz_backend/internal/config"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,13 +19,19 @@ import (
 	"go.uber.org/zap"
 )
 
+var testJWTConfig = config.JWTConfig{
+	Secret:        "test-secret",
+	Expiry:        15 * time.Minute,
+	RefreshExpiry: 7 * 24 * time.Hour,
+}
+
 func TestHandler_Register(t *testing.T) {
 	t.Run("invalid JSON", func(t *testing.T) {
 		// arrange
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		body := strings.NewReader(`{"email": "bad json`)
 		req := httptest.NewRequest(http.MethodPost, "/auth/register", body)
@@ -43,7 +50,7 @@ func TestHandler_Register(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		body := strings.NewReader(`{}`)
 		req := httptest.NewRequest(http.MethodPost, "/auth/register", body)
@@ -66,7 +73,7 @@ func TestHandler_Register(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		mockAuth.EXPECT().
 			Register(gomock.Any(), gomock.Any()).
@@ -89,7 +96,7 @@ func TestHandler_Register(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		mockAuth.EXPECT().
 			Register(gomock.Any(), gomock.Any()).
@@ -112,7 +119,7 @@ func TestHandler_Register(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		mockAuth.EXPECT().
 			Register(gomock.Any(), gomock.Any()).
@@ -135,7 +142,7 @@ func TestHandler_Register(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		mockAuth.EXPECT().
 			Register(gomock.Any(), gomock.Any()).
@@ -169,6 +176,7 @@ func TestHandler_Register(t *testing.T) {
 		assert.True(t, refreshCookie.HttpOnly)
 		assert.True(t, refreshCookie.Secure)
 		assert.Equal(t, http.SameSiteStrictMode, refreshCookie.SameSite)
+
 	})
 }
 
@@ -178,7 +186,7 @@ func TestHandler_Login(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		body := strings.NewReader(`{"email": "bad json`)
 		req := httptest.NewRequest(http.MethodPost, "/auth/login", body)
@@ -197,7 +205,7 @@ func TestHandler_Login(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		body := strings.NewReader(`{}`)
 		req := httptest.NewRequest(http.MethodPost, "/auth/login", body)
@@ -220,7 +228,7 @@ func TestHandler_Login(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		mockAuth.EXPECT().
 			Login(gomock.Any(), gomock.Any()).
@@ -243,7 +251,7 @@ func TestHandler_Login(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		mockAuth.EXPECT().
 			Login(gomock.Any(), gomock.Any()).
@@ -266,7 +274,7 @@ func TestHandler_Login(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		mockAuth.EXPECT().
 			Login(gomock.Any(), gomock.Any()).
@@ -289,7 +297,7 @@ func TestHandler_Login(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		userID := uuid.New()
 		createdAt := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
@@ -345,7 +353,7 @@ func TestHandler_RefreshToken(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		req := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
 		w := httptest.NewRecorder()
@@ -363,7 +371,7 @@ func TestHandler_RefreshToken(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		mockAuth.EXPECT().
 			RefreshToken(gomock.Any(), "stale-opaque-token").
@@ -386,7 +394,7 @@ func TestHandler_RefreshToken(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		mockAuth.EXPECT().
 			RefreshToken(gomock.Any(), "some-opaque-token").
@@ -409,7 +417,7 @@ func TestHandler_RefreshToken(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		mockAuth.EXPECT().
 			RefreshToken(gomock.Any(), "valid-opaque-token").
@@ -450,7 +458,7 @@ func TestHandler_Logout(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
 		w := httptest.NewRecorder()
@@ -475,7 +483,7 @@ func TestHandler_Logout(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		mockAuth.EXPECT().
 			Logout(gomock.Any(), "valid-opaque-token").
@@ -505,7 +513,7 @@ func TestHandler_Logout(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		mockAuth.EXPECT().
 			Logout(gomock.Any(), "stale-opaque-token").
@@ -528,7 +536,7 @@ func TestHandler_Logout(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAuth := mocks.NewMockAuthenticator(ctrl)
 
-		h := auth.NewHandler(mockAuth, zap.NewNop())
+		h := auth.NewHandler(mockAuth, testJWTConfig, zap.NewNop())
 
 		mockAuth.EXPECT().
 			Logout(gomock.Any(), "some-opaque-token").
