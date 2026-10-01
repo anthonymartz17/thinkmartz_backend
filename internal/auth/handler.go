@@ -83,10 +83,11 @@ type Handler struct {
 }
 
 // NewHandler creates and returns a new Handler
-func NewHandler(srv Authenticator, l *zap.Logger) *Handler {
+func NewHandler(srv Authenticator, jwtConfig config.JWTConfig, l *zap.Logger) *Handler {
 	return &Handler{
-		service: srv,
-		logger:  l,
+		service:   srv,
+		jwtConfig: jwtConfig,
+		logger:    l,
 	}
 }
 
