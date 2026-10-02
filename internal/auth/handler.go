@@ -207,18 +207,12 @@ func (h *Handler) RegisterRefreshRoutes(r chi.Router) {
 	r.Post("/auth/refresh", h.RefreshToken)
 }
 
-// RefreshToken extracts refresh token from cookie then refreshes an access token
+// RefreshToken reads the refresh token cookie and issues a new token pair.
 func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 
 	cookie, err := r.Cookie("refresh_token")
-
-	if errors.Is(err, http.ErrNoCookie) {
-		response.WriteError(w, http.StatusUnauthorized, msgInvalidSession)
-		return
-	}
-
 	if err != nil {
-		response.WriteError(w, http.StatusInternalServerError, msgInternalServer)
+		response.WriteError(w, http.StatusUnauthorized, msgInvalidSession)
 		return
 	}
 
@@ -227,9 +221,10 @@ func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, ErrRefreshTokenNotFound) {
 			response.WriteError(w, http.StatusUnauthorized, msgInvalidSession)
-		} else {
-			response.WriteError(w, http.StatusInternalServerError, msgInternalServer)
+			return
 		}
+		h.logger.Error("refresh token", zap.Error(err))
+		response.WriteError(w, http.StatusInternalServerError, msgInternalServer)
 
 		return
 	}
