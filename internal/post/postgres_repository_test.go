@@ -212,6 +212,61 @@ func TestGetByID(t *testing.T) {
 	})
 }
 
+func TestUpdate(t *testing.T) {
+	t.Run("not found", func(t *testing.T) {
+		// arrange
+		pool := newTestPool(t)
+		repo := post.NewPostgresRepository(pool)
+		ctx := t.Context()
+		p := &post.Post{ID: uuid.New(), Content: "whatever"}
+
+		// act
+		gotErr := repo.Update(ctx, p)
+
+		// assert
+		assert.ErrorIs(t, gotErr, post.ErrPostNotFound)
+	})
+
+	t.Run("context cancelled", func(t *testing.T) {
+		// arrange
+		pool := newTestPool(t)
+		repo := post.NewPostgresRepository(pool)
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		p := &post.Post{ID: uuid.New(), Content: "whatever"}
+
+		// act
+		gotErr := repo.Update(ctx, p)
+
+		// assert
+		assert.Error(t, gotErr, "should fail when context is already cancelled")
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		pool := newTestPool(t)
+		repo := post.NewPostgresRepository(pool)
+		user := newTestUser(ctx, t, pool)
+		p := newTestPost(t, user.ID)
+		require.NoError(t, repo.Save(ctx, p), "failed to seed post")
+		wantContent := "updated content"
+		updated := &post.Post{ID: p.ID, Content: wantContent}
+
+		// act
+		gotErr := repo.Update(ctx, updated)
+
+		// assert
+		require.NoError(t, gotErr)
+		assert.Equal(t, wantContent, updated.Content)
+		assert.Equal(t, user.ID, updated.UserID)
+		assert.True(t, updated.CreatedAt.Equal(p.CreatedAt), "CreatedAt should not change")
+		assert.True(t, updated.UpdatedAt.After(p.UpdatedAt), "UpdatedAt should move forward")
+		assert.Zero(t, updated.LikeCount)
+		assert.Zero(t, updated.CommentCount)
+	})
+}
+
 func newTestPost(t *testing.T, userID uuid.UUID) *post.Post {
 	t.Helper()
 
