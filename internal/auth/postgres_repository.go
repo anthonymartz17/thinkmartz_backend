@@ -11,19 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var (
-	// ErrAlreadyExists is returned when a user's email or username is
-	// already taken.
-	ErrAlreadyExists = errors.New("already exists")
-	// ErrEmailAlreadyExists is returned when a user's email is already taken.
-	ErrEmailAlreadyExists = errors.New("email already exists")
-	// ErrUsernameAlreadyExists is returned when a username is already taken.
-	ErrUsernameAlreadyExists = errors.New("username already exists")
-
-	// ErrUserNotFound is returned when no user matches the given email.
-	ErrUserNotFound = errors.New("user not found")
-)
-
 // Checks if PostgresRepository implements Repository
 var _ Repository = (*PostgresRepository)(nil)
 

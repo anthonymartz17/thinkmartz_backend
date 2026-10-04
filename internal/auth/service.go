@@ -11,11 +11,6 @@ import (
 
 const _bcryptCost = bcrypt.DefaultCost
 
-var (
-	// ErrInvalidPassword indicates the provided password did not match the stored hash.
-	ErrInvalidPassword = errors.New("password is invalid")
-)
-
 // validates Service implements Authenticator
 var _ Authenticator = (*Service)(nil)
 
