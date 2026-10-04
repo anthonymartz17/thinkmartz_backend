@@ -11,11 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var (
-	// ErrPostNotFound is returned when no post matches the given userID.
-	ErrPostNotFound = errors.New("post not found")
-)
-
 // Checks if  PostgresRepository implements Repository
 var _ Repository = (*PostgresRepository)(nil)
 

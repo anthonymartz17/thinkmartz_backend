@@ -71,3 +71,18 @@ func (mr *MockServiceMockRecorder) GetByID(ctx, postID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockService)(nil).GetByID), ctx, postID)
 }
+
+// Update mocks base method.
+func (m *MockService) Update(ctx context.Context, input post.UpdateInput) (*post.Post, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", ctx, input)
+	ret0, _ := ret[0].(*post.Post)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockServiceMockRecorder) Update(ctx, input any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockService)(nil).Update), ctx, input)
+}

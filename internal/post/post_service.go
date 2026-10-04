@@ -12,6 +12,13 @@ import (
 // validates service implements Service
 var _ Service = (*service)(nil)
 
+// UpdateInput holds the parameters for Service.Update.
+type UpdateInput struct {
+	PostID  uuid.UUID
+	UserID  uuid.UUID
+	Content string
+}
+
 // service handles post business logic orchestrating interaction with Repository and RedisRepository
 type service struct {
 	repo                        Repository
@@ -69,6 +76,28 @@ func (s *service) Create(ctx context.Context, userID uuid.UUID, content string) 
 	return post, nil
 }
 
+// GetByID gets a single post by ID
 func (s *service) GetByID(ctx context.Context, postID uuid.UUID) (*Post, error) {
 	return s.repo.GetByID(ctx, postID)
+}
+
+// Update sets the content of the post with input.postID. It returns ErrPostNotFound
+// if the post doesn't exist and ErrForbidden if input.userID doesn't own it.
+func (s *service) Update(ctx context.Context, input UpdateInput) (*Post, error) {
+
+	post, err := s.repo.GetByID(ctx, input.PostID)
+	if err != nil {
+		return nil, fmt.Errorf("update post: %w", err)
+	}
+
+	if post.UserID != input.UserID {
+		return nil, ErrForbidden
+	}
+
+	post.Content = input.Content
+	if err := s.repo.Update(ctx, post); err != nil {
+		return nil, err
+	}
+
+	return post, nil
 }
