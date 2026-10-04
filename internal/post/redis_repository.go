@@ -46,6 +46,16 @@ func (r *RedisRepository) AddToFeed(ctx context.Context, p Post, followerIDs []u
 	return nil
 }
 
+// DeleteFeed invalidates a user's stale feed by deleting the entire feed. Surgical removal of individual posts is not worth the complexity at this phase.
+func (r *RedisRepository) DeleteFeed(ctx context.Context, userID uuid.UUID) error {
+
+	if err := r.RedisClient.Del(ctx, FeedKey(userID)).Err(); err != nil {
+		return fmt.Errorf("delete feed: %w", err)
+	}
+
+	return nil
+}
+
 // FeedKey returns the Redis key holding a user's feed sorted set.
 func FeedKey(userID uuid.UUID) string {
 	return fmt.Sprintf("feed:user:%s", userID.String())
