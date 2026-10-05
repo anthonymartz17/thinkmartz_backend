@@ -23,17 +23,22 @@ func NewRedisRepo(client *redis.Client) *RedisRepository {
 	}
 }
 
-// AddToFeed adds postIDS to users feed by batching through a RedisClient Pipeliner
+const _feedMaxSize = 50
+
+// AddToFeed adds postIDS to users feed by batching through a RedisClient Pipeliner,
+// trimming each feed to the _feedMaxSize most recent posts so it doesn't grow unbounded.
 func (r *RedisRepository) AddToFeed(ctx context.Context, p Post, followerIDs []uuid.UUID) error {
-	pipe := r.RedisClient.Pipeline()
-
 	score := float64(p.CreatedAt.Unix())
-	for _, followerID := range followerIDs {
-		key := FeedKey(followerID)
-		pipe.ZAdd(ctx, key, redis.Z{Score: score, Member: p.ID.String()})
-	}
 
-	_, err := pipe.Exec(ctx)
+	_, err := r.RedisClient.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		for _, followerID := range followerIDs {
+			key := FeedKey(followerID)
+			pipe.ZAdd(ctx, key, redis.Z{Score: score, Member: p.ID.String()})
+			pipe.ZRemRangeByRank(ctx, key, 0, -(_feedMaxSize + 1))
+		}
+		return nil
+	})
+
 	if err != nil {
 		return fmt.Errorf("fan out to feeds: %w", err)
 	}

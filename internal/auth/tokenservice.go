@@ -14,11 +14,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var (
-	// ErrRefreshTokenNotFound is returned when no match for refresh token is not found on redis
-	ErrRefreshTokenNotFound = errors.New("token not found")
-)
-
 // AccessTokenClaims defines the expected claims for the access token
 type AccessTokenClaims struct {
 	UserID uuid.UUID `json:"user_id"`
