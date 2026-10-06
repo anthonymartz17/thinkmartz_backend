@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/middleware"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/response"
@@ -19,7 +20,7 @@ const (
 	msgInternalServer = "internal server error"
 	msgInvalidPostID  = "invalid post id"
 	msgPostNotFound   = "post not found"
-	msgForbidden      = "Unauthorized"
+	msgForbidden      = "you can only edit your own posts"
 )
 
 // CreateInput is the decoded request body for Handler.Create.
@@ -57,7 +58,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusBadRequest, msgInvalidRequest)
 		return
 	}
-
+	input.Content = strings.TrimSpace(input.Content)
 	if err := validation.Validate.Struct(input); err != nil {
 		var validationErrs validator.ValidationErrors
 
@@ -125,12 +126,12 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 
 	var req updateRequest
 	ctx := r.Context()
-
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.WriteError(w, http.StatusBadRequest, msgInvalidRequest)
 		return
 	}
 
+	req.Content = strings.TrimSpace(req.Content)
 	if err := validation.Validate.Struct(req); err != nil {
 		var validationErrs validator.ValidationErrors
 
@@ -194,4 +195,6 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) RegisterProtectedRoutes(r chi.Router) {
 	r.Post("/posts", h.Create)
 	r.Get("/posts/{postID}", h.GetByID)
+	r.Patch("/posts/{postID}", h.Update)
+
 }

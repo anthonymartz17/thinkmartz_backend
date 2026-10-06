@@ -183,6 +183,160 @@ func TestHandler_GetByID(t *testing.T) {
 	})
 }
 
+func TestHandler_Update(t *testing.T) {
+	t.Run("malformed request", func(t *testing.T) {
+		// arrange
+		h, _ := newTestHandler(t)
+		postID := uuid.New()
+		req := newUpdateRequest(postID.String(), `{"content":`)
+		w := httptest.NewRecorder()
+
+		// act
+		h.Update(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
+	})
+
+	t.Run("content is empty", func(t *testing.T) {
+		// arrange
+		h, _ := newTestHandler(t)
+		postID := uuid.New()
+		req := newUpdateRequest(postID.String(), `{"content":""}`)
+		w := httptest.NewRecorder()
+
+		// act
+		h.Update(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
+	})
+
+	t.Run("unable to extract user id from context", func(t *testing.T) {
+		// arrange
+		h, _ := newTestHandler(t)
+		postID := uuid.New()
+		req := newUpdateRequest(postID.String(), `{"content":"new content"}`)
+		w := httptest.NewRecorder()
+
+		// act
+		h.Update(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+	})
+
+	t.Run("invalid post id", func(t *testing.T) {
+		// arrange
+		h, _ := newTestHandler(t)
+		userID := uuid.New()
+		req := newUpdateRequest("not-a-uuid", `{"content":"new content"}`)
+		req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
+		w := httptest.NewRecorder()
+
+		// act
+		h.Update(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
+	})
+
+	t.Run("forbidden", func(t *testing.T) {
+		// arrange
+		h, mockSvc := newTestHandler(t)
+		postID := uuid.New()
+		userID := uuid.New()
+		mockSvc.EXPECT().
+			Update(gomock.Any(), post.UpdateInput{PostID: postID, UserID: userID, Content: "new content"}).
+			Return(nil, post.ErrForbidden)
+
+		req := newUpdateRequest(postID.String(), `{"content":"new content"}`)
+		req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
+		w := httptest.NewRecorder()
+
+		// act
+		h.Update(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusForbidden, w.Result().StatusCode)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		// arrange
+		h, mockSvc := newTestHandler(t)
+		postID := uuid.New()
+		userID := uuid.New()
+		mockSvc.EXPECT().
+			Update(gomock.Any(), post.UpdateInput{PostID: postID, UserID: userID, Content: "new content"}).
+			Return(nil, post.ErrPostNotFound)
+
+		req := newUpdateRequest(postID.String(), `{"content":"new content"}`)
+		req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
+		w := httptest.NewRecorder()
+
+		// act
+		h.Update(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusNotFound, w.Result().StatusCode)
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		// arrange
+		h, mockSvc := newTestHandler(t)
+		postID := uuid.New()
+		userID := uuid.New()
+		mockSvc.EXPECT().
+			Update(gomock.Any(), post.UpdateInput{PostID: postID, UserID: userID, Content: "new content"}).
+			Return(nil, assert.AnError)
+
+		req := newUpdateRequest(postID.String(), `{"content":"new content"}`)
+		req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
+		w := httptest.NewRecorder()
+
+		// act
+		h.Update(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		// arrange
+		h, mockSvc := newTestHandler(t)
+		postID := uuid.New()
+		userID := uuid.New()
+		wantPost := &post.Post{ID: postID, UserID: userID, Content: "new content"}
+		mockSvc.EXPECT().
+			Update(gomock.Any(), post.UpdateInput{PostID: postID, UserID: userID, Content: "new content"}).
+			Return(wantPost, nil)
+
+		req := newUpdateRequest(postID.String(), `{"content":"new content"}`)
+		req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
+		w := httptest.NewRecorder()
+
+		// act
+		h.Update(w, req)
+
+		// assert
+		resp := w.Result()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var got post.Post
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&got))
+		assert.Equal(t, wantPost.ID, got.ID)
+		assert.Equal(t, wantPost.UserID, got.UserID)
+		assert.Equal(t, wantPost.Content, got.Content)
+	})
+}
+
+func newUpdateRequest(postIDParam, body string) *http.Request {
+	req := httptest.NewRequest(http.MethodPatch, "/posts/"+postIDParam, strings.NewReader(body))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("postID", postIDParam)
+	return req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+}
+
 func newGetByIDRequest(postIDParam string) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/posts/"+postIDParam, nil)
 	rctx := chi.NewRouteContext()
