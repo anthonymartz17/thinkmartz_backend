@@ -212,6 +212,36 @@ func TestHandler_Update(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
 	})
 
+	t.Run("content is whitespace only", func(t *testing.T) {
+		// arrange
+		h, _ := newTestHandler(t)
+		postID := uuid.New()
+		req := newUpdateRequest(postID.String(), `{"content":"   "}`)
+		w := httptest.NewRecorder()
+
+		// act
+		h.Update(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
+	})
+
+	t.Run("content is too long", func(t *testing.T) {
+		// arrange
+		h, _ := newTestHandler(t)
+		postID := uuid.New()
+		body, err := json.Marshal(map[string]string{"content": strings.Repeat("a", 281)})
+		require.NoError(t, err)
+		req := newUpdateRequest(postID.String(), string(body))
+		w := httptest.NewRecorder()
+
+		// act
+		h.Update(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
+	})
+
 	t.Run("unable to extract user id from context", func(t *testing.T) {
 		// arrange
 		h, _ := newTestHandler(t)
