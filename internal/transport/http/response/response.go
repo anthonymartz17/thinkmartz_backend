@@ -13,7 +13,12 @@ func WriteJSON(w http.ResponseWriter, status int, body any) error {
 	return json.NewEncoder(w).Encode(body)
 }
 
-// WriteError writes a plain-text error response with the given status code.
+// ErrorResponse is the JSON body written by WriteError.
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+// WriteError writes a JSON error response with the given status code.
 func WriteError(w http.ResponseWriter, status int, msg string) {
-	http.Error(w, msg, status)
+	_ = WriteJSON(w, status, ErrorResponse{Error: msg})
 }

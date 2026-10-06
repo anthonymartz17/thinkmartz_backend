@@ -176,6 +176,75 @@ func TestService_GetByID(t *testing.T) {
 	})
 }
 
+func TestService_Update(t *testing.T) {
+	ctx := t.Context()
+	postID := uuid.New()
+	userID := uuid.New()
+
+	t.Run("not found", func(t *testing.T) {
+		// arrange
+		svc, mockRepo := newTestService(t)
+		mockRepo.EXPECT().GetByID(ctx, postID).Return(nil, post.ErrPostNotFound)
+
+		// act
+		gotPost, gotErr := svc.Update(ctx, post.UpdateInput{PostID: postID, UserID: userID, Content: "new content"})
+
+		// assert
+		assert.Nil(t, gotPost)
+		assert.ErrorIs(t, gotErr, post.ErrPostNotFound)
+	})
+
+	t.Run("forbidden", func(t *testing.T) {
+		// arrange
+		svc, mockRepo := newTestService(t)
+		otherUsersPost := &post.Post{ID: postID, UserID: uuid.New(), Content: "not yours"}
+		mockRepo.EXPECT().GetByID(ctx, postID).Return(otherUsersPost, nil)
+
+		// act
+		gotPost, gotErr := svc.Update(ctx, post.UpdateInput{PostID: postID, UserID: userID, Content: "new content"})
+
+		// assert
+		assert.Nil(t, gotPost)
+		assert.ErrorIs(t, gotErr, post.ErrForbidden)
+	})
+
+	t.Run("update fails", func(t *testing.T) {
+		// arrange
+		svc, mockRepo := newTestService(t)
+		ownedPost := &post.Post{ID: postID, UserID: userID, Content: "old content"}
+		updateErr := errors.New("update failed")
+		mockRepo.EXPECT().GetByID(ctx, postID).Return(ownedPost, nil)
+		mockRepo.EXPECT().Update(ctx, ownedPost).Return(updateErr)
+
+		// act
+		gotPost, gotErr := svc.Update(ctx, post.UpdateInput{PostID: postID, UserID: userID, Content: "new content"})
+
+		// assert
+		assert.Nil(t, gotPost)
+		assert.ErrorIs(t, gotErr, updateErr)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		// arrange
+		svc, mockRepo := newTestService(t)
+		ownedPost := &post.Post{ID: postID, UserID: userID, Content: "old content"}
+		wantContent := "new content"
+		mockRepo.EXPECT().GetByID(ctx, postID).Return(ownedPost, nil)
+		mockRepo.EXPECT().Update(ctx, gomock.Cond(func(x any) bool {
+			p, ok := x.(*post.Post)
+			return ok && p.Content == wantContent
+		})).Return(nil)
+
+		// act
+		gotPost, gotErr := svc.Update(ctx, post.UpdateInput{PostID: postID, UserID: userID, Content: wantContent})
+
+		// assert
+		assert.NoError(t, gotErr)
+		require.NotNil(t, gotPost)
+		assert.Equal(t, wantContent, gotPost.Content)
+	})
+}
+
 func newTestService(t *testing.T) (post.Service, *mocks.MockRepository) {
 	t.Helper()
 

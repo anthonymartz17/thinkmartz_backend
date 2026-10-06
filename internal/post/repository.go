@@ -12,4 +12,5 @@ type Repository interface {
 	GetFollowersByID(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	CountFollowers(ctx context.Context, userID uuid.UUID) (int, error)
 	GetByID(ctx context.Context, postID uuid.UUID) (*Post, error)
+	Update(ctx context.Context, p *Post) error
 }

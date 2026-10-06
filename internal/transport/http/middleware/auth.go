@@ -8,6 +8,7 @@ import (
 
 	"github.com/anthonymartz17/thinkmartz_backend/internal/auth"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/config"
+	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/response"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
@@ -24,7 +25,7 @@ func AuthMiddleware(jwtConfig config.JWTConfig) func(http.Handler) http.Handler 
 			authHeader := r.Header.Get("Authorization")
 
 			if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-				http.Error(w, "missing or malformed authorization header", http.StatusUnauthorized)
+				response.WriteError(w, http.StatusUnauthorized, "missing or malformed authorization header")
 				return
 			}
 			parts := strings.SplitN(authHeader, " ", 2)
@@ -41,13 +42,13 @@ func AuthMiddleware(jwtConfig config.JWTConfig) func(http.Handler) http.Handler 
 				jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
 			)
 			if err != nil || !token.Valid {
-				http.Error(w, "invalid or expired token", http.StatusUnauthorized)
+				response.WriteError(w, http.StatusUnauthorized, "invalid or expired token")
 				return
 			}
 
 			userID := claims.UserID
 			if userID == uuid.Nil {
-				http.Error(w, "token missing user id claim", http.StatusUnauthorized)
+				response.WriteError(w, http.StatusUnauthorized, "token missing user id claim")
 				return
 			}
 

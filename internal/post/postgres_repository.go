@@ -11,11 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var (
-	// ErrPostNotFound is returned when no post matches the given userID.
-	ErrPostNotFound = errors.New("post not found")
-)
-
 // Checks if  PostgresRepository implements Repository
 var _ Repository = (*PostgresRepository)(nil)
 
@@ -131,4 +126,31 @@ func (r *PostgresRepository) GetByID(ctx context.Context, postID uuid.UUID) (*Po
 
 	return &post, nil
 
+}
+
+// Update sets the content of the post with p.ID and populates p with the stored row.
+func (r *PostgresRepository) Update(ctx context.Context, p *Post) error {
+	query := `
+		UPDATE posts
+		SET content = $1, updated_at = now()
+		WHERE id = $2
+		RETURNING user_id, content,like_count,comment_count, created_at, updated_at 
+	`
+
+	err := r.Pool.QueryRow(ctx, query, p.Content, p.ID).Scan(
+		&p.UserID,
+		&p.Content,
+		&p.LikeCount,
+		&p.CommentCount,
+		&p.CreatedAt,
+		&p.UpdatedAt)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrPostNotFound
+		}
+		return fmt.Errorf("update post: %w", err)
+	}
+
+	return nil
 }

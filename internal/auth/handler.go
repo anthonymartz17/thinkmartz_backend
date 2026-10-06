@@ -8,6 +8,7 @@ import (
 
 	"github.com/anthonymartz17/thinkmartz_backend/internal/config"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/response"
+	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/validation"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -47,18 +48,6 @@ type LoginResponse struct {
 // RefreshTokenResponse represents a valid refresh token response.
 type RefreshTokenResponse struct {
 	AccessToken string `json:"access_token"`
-}
-
-// FieldError represents a single validation failure on one field.
-type FieldError struct {
-	Field   string `json:"field"`
-	Message string `json:"message"`
-}
-
-// ValidationErrorResponse is the JSON body returned when request
-// validation fails.
-type ValidationErrorResponse struct {
-	Errors []FieldError `json:"errors"`
 }
 
 // RegisterRequest is the shape of data the client sends to POST /auth/register.
@@ -101,11 +90,11 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := Validate.Struct(req); err != nil {
+	if err := validation.Validate.Struct(req); err != nil {
 		var validationErrs validator.ValidationErrors
 
 		if errors.As(err, &validationErrs) {
-			if err := response.WriteJSON(w, http.StatusBadRequest, toValidationErrorResponse(validationErrs)); err != nil {
+			if err := response.WriteJSON(w, http.StatusBadRequest, validation.ToErrorResponse(validationErrs)); err != nil {
 				h.logger.Error("failed to encode validation error response", zap.Error(err))
 			}
 			return
@@ -151,11 +140,11 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 
 	}
-	if err := Validate.Struct(req); err != nil {
+	if err := validation.Validate.Struct(req); err != nil {
 		var validationErrs validator.ValidationErrors
 
 		if errors.As(err, &validationErrs) {
-			if err := response.WriteJSON(w, http.StatusBadRequest, toValidationErrorResponse(validationErrs)); err != nil {
+			if err := response.WriteJSON(w, http.StatusBadRequest, validation.ToErrorResponse(validationErrs)); err != nil {
 				h.logger.Error("failed to encode validation error response", zap.Error(err))
 			}
 			return
