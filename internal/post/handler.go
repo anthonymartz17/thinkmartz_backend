@@ -7,7 +7,9 @@ import (
 
 	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/middleware"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/response"
+	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/validation"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
@@ -17,11 +19,18 @@ const (
 	msgInternalServer = "internal server error"
 	msgInvalidPostID  = "invalid post id"
 	msgPostNotFound   = "post not found"
+	msgForbidden      = "Unauthorized"
 )
 
 // CreateInput is the decoded request body for Handler.Create.
 type CreateInput struct {
-	Content string `json:"content"`
+	Content string `json:"content" validate:"required,max=280"`
+}
+
+// updateRequest is the decoded request body for Handler.Update.
+
+type updateRequest struct {
+	Content string `json:"content" validate:"required,max=280"`
 }
 
 // Handler is the post domain's HTTP layer.
@@ -49,11 +58,20 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if input.Content == "" {
+	if err := validation.Validate.Struct(input); err != nil {
+		var validationErrs validator.ValidationErrors
+
+		if errors.As(err, &validationErrs) {
+			if err := response.WriteJSON(w, http.StatusBadRequest, validation.ToErrorResponse(validationErrs)); err != nil {
+				h.logger.Error("failed to encode validation error response", zap.Error(err))
+			}
+			return
+		}
+
 		response.WriteError(w, http.StatusBadRequest, msgInvalidRequest)
 		return
-
 	}
+
 	userID, ok := middleware.UserIDFromContext(ctx)
 
 	if !ok {
@@ -100,6 +118,76 @@ func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error("failed to encode GetByID response", zap.Error(err))
 	}
 
+}
+
+// Update replaces the content of a post owned by the authenticated user.
+func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
+
+	var req updateRequest
+	ctx := r.Context()
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, msgInvalidRequest)
+		return
+	}
+
+	if err := validation.Validate.Struct(req); err != nil {
+		var validationErrs validator.ValidationErrors
+
+		if errors.As(err, &validationErrs) {
+			if err := response.WriteJSON(w, http.StatusBadRequest, validation.ToErrorResponse(validationErrs)); err != nil {
+				h.logger.Error("failed to encode validation error response", zap.Error(err))
+			}
+			return
+		}
+
+		response.WriteError(w, http.StatusBadRequest, msgInvalidRequest)
+		return
+	}
+
+	userID, ok := middleware.UserIDFromContext(ctx)
+
+	if !ok {
+		response.WriteError(w, http.StatusInternalServerError, msgInternalServer)
+		h.logger.Error("failed to extract userID from context")
+		return
+	}
+
+	postID, err := uuid.Parse(chi.URLParam(r, "postID"))
+
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, msgInvalidPostID)
+		return
+	}
+
+	input := UpdateInput{
+		PostID:  postID,
+		UserID:  userID,
+		Content: req.Content,
+	}
+
+	post, err := h.Service.Update(ctx, input)
+
+	if err != nil {
+
+		if errors.Is(err, ErrForbidden) {
+			response.WriteError(w, http.StatusForbidden, msgForbidden)
+			return
+		}
+
+		if errors.Is(err, ErrPostNotFound) {
+			response.WriteError(w, http.StatusNotFound, msgPostNotFound)
+			return
+		}
+
+		response.WriteError(w, http.StatusInternalServerError, msgInternalServer)
+		h.logger.Error("failed to update post", zap.String("post_id", postID.String()), zap.Error(err))
+		return
+	}
+
+	if err := response.WriteJSON(w, http.StatusOK, post); err != nil {
+		h.logger.Error("failed to encode update post response", zap.Error(err))
+	}
 }
 
 // RegisterProtectedRoutes registers Handler's protected routes

@@ -12,6 +12,7 @@ import (
 	"github.com/anthonymartz17/thinkmartz_backend/internal/auth"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/auth/mocks"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/config"
+	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/validation"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,7 +64,7 @@ func TestHandler_Register(t *testing.T) {
 		resp := w.Result()
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
-		var got auth.ValidationErrorResponse
+		var got validation.ErrorResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&got))
 		assert.NotEmpty(t, got.Errors, "expected at least one field error")
 	})
@@ -218,7 +219,7 @@ func TestHandler_Login(t *testing.T) {
 		resp := w.Result()
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
-		var got auth.ValidationErrorResponse
+		var got validation.ErrorResponse
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&got))
 		assert.NotEmpty(t, got.Errors, "expected at least one field error")
 	})
