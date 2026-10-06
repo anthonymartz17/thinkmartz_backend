@@ -8,6 +8,7 @@ import (
 
 	"github.com/anthonymartz17/thinkmartz_backend/internal/config"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/response"
+	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/validation"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -101,7 +102,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := Validate.Struct(req); err != nil {
+	if err := validation.Validate.Struct(req); err != nil {
 		var validationErrs validator.ValidationErrors
 
 		if errors.As(err, &validationErrs) {
@@ -151,7 +152,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 
 	}
-	if err := Validate.Struct(req); err != nil {
+	if err := validation.Validate.Struct(req); err != nil {
 		var validationErrs validator.ValidationErrors
 
 		if errors.As(err, &validationErrs) {
