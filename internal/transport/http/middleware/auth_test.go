@@ -1,16 +1,16 @@
 package middleware_test
 
 import (
-	"io"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/anthonymartz17/thinkmartz_backend/internal/auth"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/config"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/middleware"
+	"github.com/anthonymartz17/thinkmartz_backend/internal/transport/http/response"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -130,7 +130,7 @@ func TestAuthMiddleware(t *testing.T) {
 			assert.Equal(t, tc.wantStatus, resp.StatusCode)
 			assert.Equal(t, tc.wantNextCalled, nextCalled, "next handler call state")
 			if tc.wantStatus != http.StatusOK {
-				assert.Equal(t, tc.wantBody, readBody(t, resp))
+				assert.Equal(t, tc.wantBody, readErrorBody(t, resp))
 			}
 			if tc.wantUserID != uuid.Nil {
 				assert.True(t, gotOK, "user id should be present in context")
@@ -150,11 +150,11 @@ func signToken(t *testing.T, method jwt.SigningMethod, secret string, claims *au
 	return signed
 }
 
-// readBody reads and trims the response body, matching http.Error's trailing newline.
-func readBody(t *testing.T, resp *http.Response) string {
+// readErrorBody decodes the JSON error response body written by response.WriteError.
+func readErrorBody(t *testing.T, resp *http.Response) string {
 	t.Helper()
 
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	return strings.TrimSpace(string(body))
+	var got response.ErrorResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&got))
+	return got.Error
 }
