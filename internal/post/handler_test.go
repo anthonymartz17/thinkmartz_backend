@@ -360,6 +360,124 @@ func TestHandler_Update(t *testing.T) {
 	})
 }
 
+func TestHandler_Delete(t *testing.T) {
+	t.Run("invalid post id", func(t *testing.T) {
+		// arrange
+		h, _ := newTestHandler(t)
+		req := newDeleteRequest("not-a-uuid")
+		w := httptest.NewRecorder()
+
+		// act
+		h.Delete(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
+	})
+
+	t.Run("unable to extract user id from context", func(t *testing.T) {
+		// arrange
+		h, _ := newTestHandler(t)
+		postID := uuid.New()
+		req := newDeleteRequest(postID.String())
+		w := httptest.NewRecorder()
+
+		// act
+		h.Delete(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		// arrange
+		h, mockSvc := newTestHandler(t)
+		postID := uuid.New()
+		userID := uuid.New()
+		mockSvc.EXPECT().
+			Delete(gomock.Any(), post.DeleteInput{PostID: postID, UserID: userID}).
+			Return(post.ErrPostNotFound)
+
+		req := newDeleteRequest(postID.String())
+		req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
+		w := httptest.NewRecorder()
+
+		// act
+		h.Delete(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusNotFound, w.Result().StatusCode)
+	})
+
+	t.Run("forbidden", func(t *testing.T) {
+		// arrange
+		h, mockSvc := newTestHandler(t)
+		postID := uuid.New()
+		userID := uuid.New()
+		mockSvc.EXPECT().
+			Delete(gomock.Any(), post.DeleteInput{PostID: postID, UserID: userID}).
+			Return(post.ErrForbidden)
+
+		req := newDeleteRequest(postID.String())
+		req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
+		w := httptest.NewRecorder()
+
+		// act
+		h.Delete(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusForbidden, w.Result().StatusCode)
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		// arrange
+		h, mockSvc := newTestHandler(t)
+		postID := uuid.New()
+		userID := uuid.New()
+		mockSvc.EXPECT().
+			Delete(gomock.Any(), post.DeleteInput{PostID: postID, UserID: userID}).
+			Return(assert.AnError)
+
+		req := newDeleteRequest(postID.String())
+		req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
+		w := httptest.NewRecorder()
+
+		// act
+		h.Delete(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		// arrange
+		h, mockSvc := newTestHandler(t)
+		postID := uuid.New()
+		userID := uuid.New()
+		mockSvc.EXPECT().
+			Delete(gomock.Any(), post.DeleteInput{PostID: postID, UserID: userID}).
+			Return(nil)
+
+		req := newDeleteRequest(postID.String())
+		req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
+		w := httptest.NewRecorder()
+
+		// act
+		h.Delete(w, req)
+
+		// assert
+		resp := w.Result()
+		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+		assert.Zero(t, w.Body.Len(), "204 response should have no body")
+	})
+}
+
+func newDeleteRequest(postIDParam string) *http.Request {
+	req := httptest.NewRequest(http.MethodDelete, "/posts/"+postIDParam, nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("postID", postIDParam)
+	return req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+}
+
 func newUpdateRequest(postIDParam, body string) *http.Request {
 	req := httptest.NewRequest(http.MethodPatch, "/posts/"+postIDParam, strings.NewReader(body))
 	rctx := chi.NewRouteContext()

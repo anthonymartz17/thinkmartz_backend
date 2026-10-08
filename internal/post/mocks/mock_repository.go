@@ -57,6 +57,20 @@ func (mr *MockRepositoryMockRecorder) CountFollowers(ctx, userID any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountFollowers", reflect.TypeOf((*MockRepository)(nil).CountFollowers), ctx, userID)
 }
 
+// Delete mocks base method.
+func (m *MockRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockRepositoryMockRecorder) Delete(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockRepository)(nil).Delete), ctx, id)
+}
+
 // GetByID mocks base method.
 func (m *MockRepository) GetByID(ctx context.Context, postID uuid.UUID) (*post.Post, error) {
 	m.ctrl.T.Helper()

@@ -8,6 +8,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const _feedMaxSize = 50
+
 // validates RedisRepository implements FeedRepository
 var _ FeedRepository = (*RedisRepository)(nil)
 
@@ -22,8 +24,6 @@ func NewRedisRepo(client *redis.Client) *RedisRepository {
 		RedisClient: client,
 	}
 }
-
-const _feedMaxSize = 50
 
 // AddToFeed adds postIDS to users feed by batching through a RedisClient Pipeliner,
 // trimming each feed to the _feedMaxSize most recent posts so it doesn't grow unbounded.
@@ -41,6 +41,27 @@ func (r *RedisRepository) AddToFeed(ctx context.Context, p Post, followerIDs []u
 
 	if err != nil {
 		return fmt.Errorf("fan out to feeds: %w", err)
+	}
+
+	return nil
+}
+
+// RemoveFromFeeds removes a post from each follower's feed.
+// A missing member is not an error (ZREM returns 0).
+func (r *RedisRepository) RemoveFromFeeds(ctx context.Context, postID uuid.UUID, followerIDs []uuid.UUID) error {
+	if len(followerIDs) == 0 {
+		return nil
+	}
+
+	member := postID.String()
+	_, err := r.RedisClient.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		for _, followerID := range followerIDs {
+			pipe.ZRem(ctx, FeedKey(followerID), member)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("remove from feeds: %w", err)
 	}
 
 	return nil

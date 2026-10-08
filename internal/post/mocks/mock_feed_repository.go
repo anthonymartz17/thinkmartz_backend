@@ -55,3 +55,17 @@ func (mr *MockFeedRepositoryMockRecorder) AddToFeed(ctx, p, followerIDs any) *go
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddToFeed", reflect.TypeOf((*MockFeedRepository)(nil).AddToFeed), ctx, p, followerIDs)
 }
+
+// RemoveFromFeeds mocks base method.
+func (m *MockFeedRepository) RemoveFromFeeds(ctx context.Context, postID uuid.UUID, followerIDs []uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveFromFeeds", ctx, postID, followerIDs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveFromFeeds indicates an expected call of RemoveFromFeeds.
+func (mr *MockFeedRepositoryMockRecorder) RemoveFromFeeds(ctx, postID, followerIDs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveFromFeeds", reflect.TypeOf((*MockFeedRepository)(nil).RemoveFromFeeds), ctx, postID, followerIDs)
+}

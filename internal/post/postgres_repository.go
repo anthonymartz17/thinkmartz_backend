@@ -154,3 +154,20 @@ func (r *PostgresRepository) Update(ctx context.Context, p *Post) error {
 
 	return nil
 }
+
+// Delete removes a post by ID.
+// Returns ErrPostNotFound if no row matched.
+func (r *PostgresRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	const query = `DELETE FROM posts WHERE id = $1`
+
+	tag, err := r.Pool.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("delete post: %w", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return ErrPostNotFound
+	}
+
+	return nil
+}

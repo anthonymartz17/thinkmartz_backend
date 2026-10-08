@@ -19,6 +19,12 @@ type UpdateInput struct {
 	Content string
 }
 
+// DeleteInput identifies the post to delete and the caller deleting it.
+type DeleteInput struct {
+	PostID uuid.UUID
+	UserID uuid.UUID
+}
+
 // service handles post business logic orchestrating interaction with Repository and RedisRepository
 type service struct {
 	repo                        Repository
@@ -100,4 +106,54 @@ func (s *service) Update(ctx context.Context, input UpdateInput) (*Post, error) 
 	}
 
 	return post, nil
+}
+
+// Delete removes a post owned by the caller and, best-effort, removes it
+// from followers' feeds. Returns ErrPostNotFound or ErrForbidden.
+func (s *service) Delete(ctx context.Context, input DeleteInput) error {
+	post, err := s.repo.GetByID(ctx, input.PostID)
+	if err != nil {
+		return fmt.Errorf("delete post: %w", err)
+	}
+
+	if post.UserID != input.UserID {
+		return ErrForbidden
+	}
+
+	if err := s.repo.Delete(ctx, post.ID); err != nil {
+		return err
+	}
+
+	// Best-effort feed cleanup: the post is gone from Postgres, so every
+	// failure below is logged and swallowed.
+	count, err := s.repo.CountFollowers(ctx, post.UserID)
+	if err != nil {
+		s.logger.Warn("count followers for feed removal",
+			zap.String("post_id", post.ID.String()),
+			zap.Error(err),
+		)
+		return nil
+	}
+
+	if count >= int(s.CelebrityFollowersThreshold) {
+		return nil // celebrity posts are never fanned out
+	}
+
+	followerIDs, err := s.repo.GetFollowersByID(ctx, post.UserID)
+	if err != nil {
+		s.logger.Warn("get followers for feed removal",
+			zap.String("post_id", post.ID.String()),
+			zap.Error(err),
+		)
+		return nil
+	}
+
+	if err := s.feedRepo.RemoveFromFeeds(ctx, post.ID, followerIDs); err != nil {
+		s.logger.Warn("remove post from feeds",
+			zap.String("post_id", post.ID.String()),
+			zap.Error(err),
+		)
+	}
+
+	return nil
 }
