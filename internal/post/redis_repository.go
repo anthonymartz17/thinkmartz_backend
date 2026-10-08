@@ -8,6 +8,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const _feedMaxSize = 50
+
 // validates RedisRepository implements FeedRepository
 var _ FeedRepository = (*RedisRepository)(nil)
 
@@ -22,8 +24,6 @@ func NewRedisRepo(client *redis.Client) *RedisRepository {
 		RedisClient: client,
 	}
 }
-
-const _feedMaxSize = 50
 
 // AddToFeed adds postIDS to users feed by batching through a RedisClient Pipeliner,
 // trimming each feed to the _feedMaxSize most recent posts so it doesn't grow unbounded.
@@ -46,11 +46,22 @@ func (r *RedisRepository) AddToFeed(ctx context.Context, p Post, followerIDs []u
 	return nil
 }
 
-// DeleteFeed invalidates a user's stale feed by deleting the entire feed. Surgical removal of individual posts is not worth the complexity at this phase.
-func (r *RedisRepository) DeleteFeed(ctx context.Context, userID uuid.UUID) error {
+// RemoveFromFeeds removes a post from each follower's feed.
+// A missing member is not an error (ZREM returns 0).
+func (r *RedisRepository) RemoveFromFeeds(ctx context.Context, postID uuid.UUID, followerIDs []uuid.UUID) error {
+	if len(followerIDs) == 0 {
+		return nil
+	}
 
-	if err := r.RedisClient.Del(ctx, FeedKey(userID)).Err(); err != nil {
-		return fmt.Errorf("delete feed: %w", err)
+	member := postID.String()
+	_, err := r.RedisClient.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		for _, followerID := range followerIDs {
+			pipe.ZRem(ctx, FeedKey(followerID), member)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("remove from feeds: %w", err)
 	}
 
 	return nil

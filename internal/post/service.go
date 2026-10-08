@@ -11,4 +11,5 @@ type Service interface {
 	Create(ctx context.Context, userID uuid.UUID, content string) (*Post, error)
 	GetByID(ctx context.Context, postID uuid.UUID) (*Post, error)
 	Update(ctx context.Context, input UpdateInput) (*Post, error)
+	Delete(ctx context.Context, input DeleteInput) error
 }

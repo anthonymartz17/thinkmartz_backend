@@ -10,4 +10,5 @@ import (
 // fan a post out to its followers' feeds.
 type FeedRepository interface {
 	AddToFeed(ctx context.Context, p Post, followerIDs []uuid.UUID) error
+	RemoveFromFeeds(ctx context.Context, postID uuid.UUID, followerIDs []uuid.UUID) error
 }

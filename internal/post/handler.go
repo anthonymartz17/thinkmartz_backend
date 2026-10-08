@@ -191,10 +191,51 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Delete handles DELETE /posts/{postID}. Owner only. Returns 204 on success.
+func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
+	postID, err := uuid.Parse(chi.URLParam(r, "postID"))
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, msgInvalidPostID)
+		return
+	}
+
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		h.logger.Error("user ID missing from context")
+		response.WriteError(w, http.StatusInternalServerError, msgInternalServer)
+		return
+	}
+
+	input := DeleteInput{
+		PostID: postID,
+		UserID: userID,
+	}
+	err = h.Service.Delete(r.Context(), input)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrPostNotFound):
+			response.WriteError(w, http.StatusNotFound, msgPostNotFound)
+		case errors.Is(err, ErrForbidden):
+			response.WriteError(w, http.StatusForbidden, msgForbidden)
+		default:
+			h.logger.Error("delete post",
+				zap.String("post_id", postID.String()),
+				zap.Error(err),
+			)
+			response.WriteError(w, http.StatusInternalServerError, msgInternalServer)
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // RegisterProtectedRoutes registers Handler's protected routes
 func (h *Handler) RegisterProtectedRoutes(r chi.Router) {
 	r.Post("/posts", h.Create)
 	r.Get("/posts/{postID}", h.GetByID)
 	r.Patch("/posts/{postID}", h.Update)
+	r.Delete("/posts/{postID}", h.Delete)
 
 }
