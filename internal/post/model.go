@@ -16,3 +16,9 @@ type Post struct {
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
+
+// Like represents a row on the post_likes table.
+type Like struct {
+	UserID uuid.UUID
+	PostID uuid.UUID
+}

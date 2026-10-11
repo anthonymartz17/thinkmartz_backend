@@ -267,6 +267,62 @@ func TestUpdate(t *testing.T) {
 	})
 }
 
+func TestSaveLike(t *testing.T) {
+	t.Run("not found", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		pool := newTestPool(t)
+		repo := post.NewPostgresRepository(pool)
+		user := newTestUser(ctx, t, pool)
+
+		// act
+		gotErr := repo.SaveLike(ctx, post.Like{UserID: user.ID, PostID: uuid.New()})
+
+		// assert
+		assert.ErrorIs(t, gotErr, post.ErrPostNotFound)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		pool := newTestPool(t)
+		repo := post.NewPostgresRepository(pool)
+		user := newTestUser(ctx, t, pool)
+		p := newTestPost(t, user.ID)
+		require.NoError(t, repo.Save(ctx, p), "failed to seed post")
+
+		// act
+		gotErr := repo.SaveLike(ctx, post.Like{UserID: user.ID, PostID: p.ID})
+
+		// assert
+		require.NoError(t, gotErr)
+		gotPost, err := repo.GetByID(ctx, p.ID)
+		require.NoError(t, err)
+		assert.Equal(t, 1, gotPost.LikeCount, "like_count should be incremented by the trigger")
+	})
+
+	t.Run("duplicate like is a no-op", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		pool := newTestPool(t)
+		repo := post.NewPostgresRepository(pool)
+		user := newTestUser(ctx, t, pool)
+		p := newTestPost(t, user.ID)
+		require.NoError(t, repo.Save(ctx, p), "failed to seed post")
+		like := post.Like{UserID: user.ID, PostID: p.ID}
+		require.NoError(t, repo.SaveLike(ctx, like), "first like should succeed")
+
+		// act
+		gotErr := repo.SaveLike(ctx, like)
+
+		// assert
+		require.NoError(t, gotErr, "liking the same post twice should not error")
+		gotPost, err := repo.GetByID(ctx, p.ID)
+		require.NoError(t, err)
+		assert.Equal(t, 1, gotPost.LikeCount, "duplicate like should not double-count")
+	})
+}
+
 func newTestPost(t *testing.T, userID uuid.UUID) *post.Post {
 	t.Helper()
 
