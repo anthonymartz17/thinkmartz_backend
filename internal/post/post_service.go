@@ -160,6 +160,15 @@ func (s *service) Delete(ctx context.Context, input DeleteInput) error {
 
 // Like records that l.UserID liked l.PostID. Liking an already-liked
 // post succeeds. Returns ErrPostNotFound if the post doesn't exist.
-func (s *service) Like(ctx context.Context, l Like) error {
-	return s.repo.SaveLike(ctx, l)
+func (s *service) Like(ctx context.Context, like Like) error {
+	return s.repo.SaveLike(ctx, like)
+}
+
+// DeleteLike removes the user's like on a post. It returns ErrPostNotFound
+// if the post doesn't exist. Removing a like that doesn't exist is a no-op.
+func (s *service) DeleteLike(ctx context.Context, like Like) error {
+	if _, err := s.repo.GetByID(ctx, like.PostID); err != nil {
+		return fmt.Errorf("unlike post: %w", err)
+	}
+	return s.repo.DeleteLike(ctx, like)
 }

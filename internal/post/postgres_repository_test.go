@@ -323,6 +323,69 @@ func TestSaveLike(t *testing.T) {
 	})
 }
 
+func TestDeleteLike(t *testing.T) {
+	t.Run("no-op when like does not exist", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		pool := newTestPool(t)
+		repo := post.NewPostgresRepository(pool)
+		user := newTestUser(ctx, t, pool)
+
+		// act
+		gotErr := repo.DeleteLike(ctx, post.Like{UserID: user.ID, PostID: uuid.New()})
+
+		// assert
+		assert.NoError(t, gotErr)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		pool := newTestPool(t)
+		repo := post.NewPostgresRepository(pool)
+		user := newTestUser(ctx, t, pool)
+		p := newTestPost(t, user.ID)
+		require.NoError(t, repo.Save(ctx, p), "failed to seed post")
+		like := post.Like{UserID: user.ID, PostID: p.ID}
+		require.NoError(t, repo.SaveLike(ctx, like), "failed to seed like")
+
+		likedPost, err := repo.GetByID(ctx, p.ID)
+		require.NoError(t, err)
+		require.Equal(t, 1, likedPost.LikeCount, "sanity check: like should be counted before deleting")
+
+		// act
+		gotErr := repo.DeleteLike(ctx, like)
+
+		// assert
+		require.NoError(t, gotErr)
+		gotPost, err := repo.GetByID(ctx, p.ID)
+		require.NoError(t, err)
+		assert.Equal(t, 0, gotPost.LikeCount, "like_count should be decremented by the trigger")
+	})
+
+	t.Run("no-op when like already deleted", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		pool := newTestPool(t)
+		repo := post.NewPostgresRepository(pool)
+		user := newTestUser(ctx, t, pool)
+		p := newTestPost(t, user.ID)
+		require.NoError(t, repo.Save(ctx, p), "failed to seed post")
+		like := post.Like{UserID: user.ID, PostID: p.ID}
+		require.NoError(t, repo.SaveLike(ctx, like), "failed to seed like")
+		require.NoError(t, repo.DeleteLike(ctx, like), "first delete should succeed")
+
+		// act
+		gotErr := repo.DeleteLike(ctx, like)
+
+		// assert
+		require.NoError(t, gotErr, "deleting an already-removed like should not error")
+		gotPost, err := repo.GetByID(ctx, p.ID)
+		require.NoError(t, err)
+		assert.Equal(t, 0, gotPost.LikeCount, "like_count should not go negative")
+	})
+}
+
 func newTestPost(t *testing.T, userID uuid.UUID) *post.Post {
 	t.Helper()
 
