@@ -157,3 +157,9 @@ func (s *service) Delete(ctx context.Context, input DeleteInput) error {
 
 	return nil
 }
+
+// Like records that l.UserID liked l.PostID. Liking an already-liked
+// post succeeds. Returns ErrPostNotFound if the post doesn't exist.
+func (s *service) Like(ctx context.Context, l Like) error {
+	return s.repo.SaveLike(ctx, l)
+}

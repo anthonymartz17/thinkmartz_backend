@@ -12,4 +12,5 @@ type Service interface {
 	GetByID(ctx context.Context, postID uuid.UUID) (*Post, error)
 	Update(ctx context.Context, input UpdateInput) (*Post, error)
 	Delete(ctx context.Context, input DeleteInput) error
+	Like(ctx context.Context, l Like) error
 }

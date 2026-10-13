@@ -7,9 +7,13 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+const _postLikesPostIDFKey = "post_likes_post_id_fkey" // confirm against the migration
 
 // Checks if  PostgresRepository implements Repository
 var _ Repository = (*PostgresRepository)(nil)
@@ -170,4 +174,26 @@ func (r *PostgresRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	}
 
 	return nil
+}
+
+// SaveLike records a user liking a post, idempotently. Returns ErrPostNotFound if the post doesn't exist.
+func (r *PostgresRepository) SaveLike(ctx context.Context, l Like) error {
+	const query = `
+		INSERT INTO post_likes (user_id, post_id)
+		VALUES ($1, $2)
+		ON CONFLICT (user_id, post_id) DO NOTHING`
+
+	_, err := r.Pool.Exec(ctx, query, l.UserID, l.PostID)
+	if err == nil {
+		return nil
+	}
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) &&
+		pgErr.Code == pgerrcode.ForeignKeyViolation &&
+		pgErr.ConstraintName == _postLikesPostIDFKey {
+		return ErrPostNotFound
+	}
+
+	return fmt.Errorf("save like: %w", err)
 }

@@ -1,0 +1,1 @@
+CREATE INDEX idx_post_likes_post_id ON post_likes (post_id);

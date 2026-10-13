@@ -478,6 +478,104 @@ func newDeleteRequest(postIDParam string) *http.Request {
 	return req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 }
 
+func TestHandler_Like(t *testing.T) {
+	t.Run("invalid post id", func(t *testing.T) {
+		// arrange
+		h, _ := newTestHandler(t)
+		req := newLikeRequest("not-a-uuid")
+		w := httptest.NewRecorder()
+
+		// act
+		h.Like(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
+	})
+
+	t.Run("unable to extract user id from context", func(t *testing.T) {
+		// arrange
+		h, _ := newTestHandler(t)
+		postID := uuid.New()
+		req := newLikeRequest(postID.String())
+		w := httptest.NewRecorder()
+
+		// act
+		h.Like(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		// arrange
+		h, mockSvc := newTestHandler(t)
+		postID := uuid.New()
+		userID := uuid.New()
+		mockSvc.EXPECT().
+			Like(gomock.Any(), post.Like{UserID: userID, PostID: postID}).
+			Return(post.ErrPostNotFound)
+
+		req := newLikeRequest(postID.String())
+		req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
+		w := httptest.NewRecorder()
+
+		// act
+		h.Like(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusNotFound, w.Result().StatusCode)
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		// arrange
+		h, mockSvc := newTestHandler(t)
+		postID := uuid.New()
+		userID := uuid.New()
+		mockSvc.EXPECT().
+			Like(gomock.Any(), post.Like{UserID: userID, PostID: postID}).
+			Return(assert.AnError)
+
+		req := newLikeRequest(postID.String())
+		req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
+		w := httptest.NewRecorder()
+
+		// act
+		h.Like(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		// arrange
+		h, mockSvc := newTestHandler(t)
+		postID := uuid.New()
+		userID := uuid.New()
+		mockSvc.EXPECT().
+			Like(gomock.Any(), post.Like{UserID: userID, PostID: postID}).
+			Return(nil)
+
+		req := newLikeRequest(postID.String())
+		req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
+		w := httptest.NewRecorder()
+
+		// act
+		h.Like(w, req)
+
+		// assert
+		resp := w.Result()
+		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+		assert.Zero(t, w.Body.Len(), "204 response should have no body")
+	})
+}
+
+func newLikeRequest(postIDParam string) *http.Request {
+	req := httptest.NewRequest(http.MethodPut, "/posts/"+postIDParam+"/like", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("postID", postIDParam)
+	return req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+}
+
 func newUpdateRequest(postIDParam, body string) *http.Request {
 	req := httptest.NewRequest(http.MethodPatch, "/posts/"+postIDParam, strings.NewReader(body))
 	rctx := chi.NewRouteContext()
