@@ -197,3 +197,16 @@ func (r *PostgresRepository) SaveLike(ctx context.Context, l Like) error {
 
 	return fmt.Errorf("save like: %w", err)
 }
+
+// DeleteLike removes the user's like on a post. Removing a like that
+// doesn't exist is a no-op: the end state ("not liked") is already true.
+func (r *PostgresRepository) DeleteLike(ctx context.Context, like Like) error {
+	const query = `
+		DELETE FROM post_likes
+		WHERE user_id = $1 AND post_id = $2`
+
+	if _, err := r.Pool.Exec(ctx, query, like.UserID, like.PostID); err != nil {
+		return fmt.Errorf("delete like: %w", err)
+	}
+	return nil
+}

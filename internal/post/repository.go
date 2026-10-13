@@ -15,4 +15,5 @@ type Repository interface {
 	Update(ctx context.Context, p *Post) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	SaveLike(ctx context.Context, l Like) error
+	DeleteLike(ctx context.Context, like Like) error
 }
