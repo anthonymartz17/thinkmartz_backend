@@ -177,13 +177,13 @@ func (r *PostgresRepository) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 // SaveLike records a user liking a post, idempotently. Returns ErrPostNotFound if the post doesn't exist.
-func (r *PostgresRepository) SaveLike(ctx context.Context, l Like) error {
+func (r *PostgresRepository) SaveLike(ctx context.Context, like Like) error {
 	const query = `
 		INSERT INTO post_likes (user_id, post_id)
 		VALUES ($1, $2)
 		ON CONFLICT (user_id, post_id) DO NOTHING`
 
-	_, err := r.Pool.Exec(ctx, query, l.UserID, l.PostID)
+	_, err := r.Pool.Exec(ctx, query, like.UserID, like.PostID)
 	if err == nil {
 		return nil
 	}

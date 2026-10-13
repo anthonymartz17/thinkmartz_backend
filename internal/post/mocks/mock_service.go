@@ -71,6 +71,20 @@ func (mr *MockServiceMockRecorder) Delete(ctx, input any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockService)(nil).Delete), ctx, input)
 }
 
+// DeleteLike mocks base method.
+func (m *MockService) DeleteLike(ctx context.Context, like post.Like) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteLike", ctx, like)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteLike indicates an expected call of DeleteLike.
+func (mr *MockServiceMockRecorder) DeleteLike(ctx, like any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLike", reflect.TypeOf((*MockService)(nil).DeleteLike), ctx, like)
+}
+
 // GetByID mocks base method.
 func (m *MockService) GetByID(ctx context.Context, postID uuid.UUID) (*post.Post, error) {
 	m.ctrl.T.Helper()
@@ -87,17 +101,17 @@ func (mr *MockServiceMockRecorder) GetByID(ctx, postID any) *gomock.Call {
 }
 
 // Like mocks base method.
-func (m *MockService) Like(ctx context.Context, l post.Like) error {
+func (m *MockService) Like(ctx context.Context, like post.Like) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Like", ctx, l)
+	ret := m.ctrl.Call(m, "Like", ctx, like)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Like indicates an expected call of Like.
-func (mr *MockServiceMockRecorder) Like(ctx, l any) *gomock.Call {
+func (mr *MockServiceMockRecorder) Like(ctx, like any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Like", reflect.TypeOf((*MockService)(nil).Like), ctx, l)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Like", reflect.TypeOf((*MockService)(nil).Like), ctx, like)
 }
 
 // Update mocks base method.

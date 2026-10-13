@@ -205,6 +205,49 @@ func TestService_Like(t *testing.T) {
 	})
 }
 
+func TestService_DeleteLike(t *testing.T) {
+	ctx := t.Context()
+	like := post.Like{UserID: uuid.New(), PostID: uuid.New()}
+
+	t.Run("post not found", func(t *testing.T) {
+		// arrange
+		svc, mockRepo := newTestService(t)
+		mockRepo.EXPECT().GetByID(ctx, like.PostID).Return(nil, post.ErrPostNotFound)
+
+		// act
+		gotErr := svc.DeleteLike(ctx, like)
+
+		// assert
+		assert.ErrorIs(t, gotErr, post.ErrPostNotFound)
+	})
+
+	t.Run("repository error", func(t *testing.T) {
+		// arrange
+		svc, mockRepo := newTestService(t)
+		mockRepo.EXPECT().GetByID(ctx, like.PostID).Return(&post.Post{ID: like.PostID}, nil)
+		mockRepo.EXPECT().DeleteLike(ctx, like).Return(assert.AnError)
+
+		// act
+		gotErr := svc.DeleteLike(ctx, like)
+
+		// assert
+		assert.ErrorIs(t, gotErr, assert.AnError)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		// arrange
+		svc, mockRepo := newTestService(t)
+		mockRepo.EXPECT().GetByID(ctx, like.PostID).Return(&post.Post{ID: like.PostID}, nil)
+		mockRepo.EXPECT().DeleteLike(ctx, like).Return(nil)
+
+		// act
+		gotErr := svc.DeleteLike(ctx, like)
+
+		// assert
+		assert.NoError(t, gotErr)
+	})
+}
+
 func TestService_Update(t *testing.T) {
 	ctx := t.Context()
 	postID := uuid.New()

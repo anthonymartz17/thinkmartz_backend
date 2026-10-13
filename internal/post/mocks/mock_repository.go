@@ -130,17 +130,17 @@ func (mr *MockRepositoryMockRecorder) Save(ctx, p any) *gomock.Call {
 }
 
 // SaveLike mocks base method.
-func (m *MockRepository) SaveLike(ctx context.Context, l post.Like) error {
+func (m *MockRepository) SaveLike(ctx context.Context, like post.Like) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveLike", ctx, l)
+	ret := m.ctrl.Call(m, "SaveLike", ctx, like)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveLike indicates an expected call of SaveLike.
-func (mr *MockRepositoryMockRecorder) SaveLike(ctx, l any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) SaveLike(ctx, like any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveLike", reflect.TypeOf((*MockRepository)(nil).SaveLike), ctx, l)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveLike", reflect.TypeOf((*MockRepository)(nil).SaveLike), ctx, like)
 }
 
 // Update mocks base method.
