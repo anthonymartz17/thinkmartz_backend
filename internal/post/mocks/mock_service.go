@@ -86,6 +86,20 @@ func (mr *MockServiceMockRecorder) GetByID(ctx, postID any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockService)(nil).GetByID), ctx, postID)
 }
 
+// Like mocks base method.
+func (m *MockService) Like(ctx context.Context, l post.Like) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Like", ctx, l)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Like indicates an expected call of Like.
+func (mr *MockServiceMockRecorder) Like(ctx, l any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Like", reflect.TypeOf((*MockService)(nil).Like), ctx, l)
+}
+
 // Update mocks base method.
 func (m *MockService) Update(ctx context.Context, input post.UpdateInput) (*post.Post, error) {
 	m.ctrl.T.Helper()

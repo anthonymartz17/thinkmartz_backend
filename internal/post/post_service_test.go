@@ -176,6 +176,35 @@ func TestService_GetByID(t *testing.T) {
 	})
 }
 
+func TestService_Like(t *testing.T) {
+	ctx := t.Context()
+	like := post.Like{UserID: uuid.New(), PostID: uuid.New()}
+
+	t.Run("success", func(t *testing.T) {
+		// arrange
+		svc, mockRepo := newTestService(t)
+		mockRepo.EXPECT().SaveLike(ctx, like).Return(nil)
+
+		// act
+		gotErr := svc.Like(ctx, like)
+
+		// assert
+		assert.NoError(t, gotErr)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		// arrange
+		svc, mockRepo := newTestService(t)
+		mockRepo.EXPECT().SaveLike(ctx, like).Return(post.ErrPostNotFound)
+
+		// act
+		gotErr := svc.Like(ctx, like)
+
+		// assert
+		assert.ErrorIs(t, gotErr, post.ErrPostNotFound)
+	})
+}
+
 func TestService_Update(t *testing.T) {
 	ctx := t.Context()
 	postID := uuid.New()

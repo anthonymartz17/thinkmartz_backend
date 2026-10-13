@@ -14,4 +14,5 @@ type Repository interface {
 	GetByID(ctx context.Context, postID uuid.UUID) (*Post, error)
 	Update(ctx context.Context, p *Post) error
 	Delete(ctx context.Context, id uuid.UUID) error
+	SaveLike(ctx context.Context, l Like) error
 }
