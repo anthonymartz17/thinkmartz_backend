@@ -269,6 +269,44 @@ func (h *Handler) Like(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// DeleteLike handles DELETE /posts/{postID}/like. It returns 204 whether or
+// not the user had liked the post, and 404 if the post doesn't exist.
+func (h *Handler) DeleteLike(w http.ResponseWriter, r *http.Request) {
+	postID, err := uuid.Parse(chi.URLParam(r, "postID"))
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, msgInvalidPostID)
+		return
+	}
+
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		h.logger.Error("user ID missing from context")
+		response.WriteError(w, http.StatusInternalServerError, msgInternalServer)
+		return
+	}
+
+	like := Like{
+		UserID: userID,
+		PostID: postID,
+	}
+
+	switch err := h.Service.DeleteLike(r.Context(), like); {
+	case errors.Is(err, ErrPostNotFound):
+		response.WriteError(w, http.StatusNotFound, msgPostNotFound)
+		return
+	case err != nil:
+		h.logger.Error("unlike post",
+			zap.String("user_id", userID.String()),
+			zap.String("post_id", postID.String()),
+			zap.Error(err),
+		)
+		response.WriteError(w, http.StatusInternalServerError, msgInternalServer)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // RegisterProtectedRoutes registers Handler's protected routes
 func (h *Handler) RegisterProtectedRoutes(r chi.Router) {
 	r.Post("/posts", h.Create)
@@ -276,5 +314,6 @@ func (h *Handler) RegisterProtectedRoutes(r chi.Router) {
 	r.Patch("/posts/{postID}", h.Update)
 	r.Delete("/posts/{postID}", h.Delete)
 	r.Put("/posts/{postID}/like", h.Like)
+	r.Delete("/posts/{postID}/like", h.DeleteLike)
 
 }
