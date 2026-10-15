@@ -49,63 +49,86 @@ func TestSave(t *testing.T) {
 	})
 }
 
-func TestCountFollowers(t *testing.T) {
-	t.Run("no followers", func(t *testing.T) {
+func TestGetFollowerCount(t *testing.T) {
+	t.Run("zero when no followers", func(t *testing.T) {
 		// arrange
+		ctx := t.Context()
 		pool := newTestPool(t)
 		postRepo := post.NewPostgresRepository(pool)
-		userID := uuid.New()
-		ctx := t.Context()
+		user := newTestUser(ctx, t, pool)
 
 		// act
-		count, gotErr := postRepo.CountFollowers(ctx, userID)
+		count, gotErr := postRepo.GetFollowerCount(ctx, user.ID)
 
 		// assert
 		assert.NoError(t, gotErr, "should not fail on zero followers")
 		assert.Equal(t, 0, count, "count should be zero when no followers")
-
 	})
 
 	t.Run("context cancelled", func(t *testing.T) {
 		// arrange
+		ctx := t.Context()
 		pool := newTestPool(t)
 		postRepo := post.NewPostgresRepository(pool)
-		userID := uuid.New()
-		ctx, cancel := context.WithCancel(t.Context())
+		user := newTestUser(ctx, t, pool)
+		cancelCtx, cancel := context.WithCancel(ctx)
 		cancel()
 
 		// act
-		_, gotErr := postRepo.CountFollowers(ctx, userID)
+		_, gotErr := postRepo.GetFollowerCount(cancelCtx, user.ID)
 
 		// assert
 		assert.Error(t, gotErr, "should fail when context is already cancelled")
-
 	})
 
-	t.Run("multiple followers", func(t *testing.T) {
+	t.Run("increments when a follow is inserted", func(t *testing.T) {
 		// arrange
+		ctx := t.Context()
 		pool := newTestPool(t)
 		postRepo := post.NewPostgresRepository(pool)
-		ctx := t.Context()
-
 		followee := newTestUser(ctx, t, pool)
+		follower := newTestUser(ctx, t, pool)
 
-		const followerCount = 5
-		for range followerCount {
-			follower := newTestUser(ctx, t, pool)
-			_, err := pool.Exec(ctx, `
+		// act
+		_, err := pool.Exec(ctx, `
 			INSERT INTO follows (follower_id, followee_id)
 			VALUES ($1, $2)
 		`, follower.ID, followee.ID)
-			require.NoError(t, err, "failed to seed follow")
-		}
-
-		// act
-		count, gotErr := postRepo.CountFollowers(ctx, followee.ID)
+		require.NoError(t, err, "failed to seed follow")
 
 		// assert
-		assert.NoError(t, gotErr, "should not fail on multiple followers")
-		assert.Equal(t, followerCount, count, "count should match number of seeded followers")
+		count, gotErr := postRepo.GetFollowerCount(ctx, followee.ID)
+		require.NoError(t, gotErr)
+		assert.Equal(t, 1, count, "trigger should increment follower_count on insert")
+	})
+
+	t.Run("decrements when a follow is deleted", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		pool := newTestPool(t)
+		postRepo := post.NewPostgresRepository(pool)
+		followee := newTestUser(ctx, t, pool)
+		follower := newTestUser(ctx, t, pool)
+		_, err := pool.Exec(ctx, `
+			INSERT INTO follows (follower_id, followee_id)
+			VALUES ($1, $2)
+		`, follower.ID, followee.ID)
+		require.NoError(t, err, "failed to seed follow")
+
+		count, err := postRepo.GetFollowerCount(ctx, followee.ID)
+		require.NoError(t, err)
+		require.Equal(t, 1, count, "sanity check: follow should be counted before deleting")
+
+		// act
+		_, err = pool.Exec(ctx, `
+			DELETE FROM follows WHERE follower_id = $1 AND followee_id = $2
+		`, follower.ID, followee.ID)
+		require.NoError(t, err, "failed to delete follow")
+
+		// assert
+		gotCount, gotErr := postRepo.GetFollowerCount(ctx, followee.ID)
+		require.NoError(t, gotErr)
+		assert.Equal(t, 0, gotCount, "trigger should decrement follower_count on delete")
 	})
 }
 
