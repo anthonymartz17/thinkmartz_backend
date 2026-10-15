@@ -58,7 +58,7 @@ func (s *service) Create(ctx context.Context, userID uuid.UUID, content string) 
 		return nil, fmt.Errorf("save post: %w", err)
 	}
 
-	count, err := s.repo.CountFollowers(ctx, userID)
+	count, err := s.repo.GetFollowerCount(ctx, userID)
 	if err != nil {
 		s.logger.Error("count followers after post creation", zap.Error(err), zap.Stringer("postID", post.ID))
 		return post, nil
@@ -126,7 +126,7 @@ func (s *service) Delete(ctx context.Context, input DeleteInput) error {
 
 	// Best-effort feed cleanup: the post is gone from Postgres, so every
 	// failure below is logged and swallowed.
-	count, err := s.repo.CountFollowers(ctx, post.UserID)
+	count, err := s.repo.GetFollowerCount(ctx, post.UserID)
 	if err != nil {
 		s.logger.Warn("count followers for feed removal",
 			zap.String("post_id", post.ID.String()),

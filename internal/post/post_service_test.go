@@ -48,7 +48,7 @@ func TestService_Create(t *testing.T) {
 		svc := post.NewService(mockRepo, mockFeedRepo, celebrityFollowersThreshold, logger)
 
 		mockRepo.EXPECT().Save(ctx, &post.Post{UserID: userID, Content: content}).Return(nil)
-		mockRepo.EXPECT().CountFollowers(ctx, userID).Return(0, countErr)
+		mockRepo.EXPECT().GetFollowerCount(ctx, userID).Return(0, countErr)
 
 		gotPost, gotErr := svc.Create(ctx, userID, content)
 
@@ -67,7 +67,7 @@ func TestService_Create(t *testing.T) {
 		svc := post.NewService(mockRepo, mockFeedRepo, celebrityFollowersThreshold, logger)
 
 		mockRepo.EXPECT().Save(ctx, &post.Post{UserID: userID, Content: content}).Return(nil)
-		mockRepo.EXPECT().CountFollowers(ctx, userID).Return(int(celebrityFollowersThreshold), nil)
+		mockRepo.EXPECT().GetFollowerCount(ctx, userID).Return(int(celebrityFollowersThreshold), nil)
 
 		gotPost, gotErr := svc.Create(ctx, userID, content)
 
@@ -86,7 +86,7 @@ func TestService_Create(t *testing.T) {
 		svc := post.NewService(mockRepo, mockFeedRepo, celebrityFollowersThreshold, logger)
 
 		mockRepo.EXPECT().Save(ctx, &post.Post{UserID: userID, Content: content}).Return(nil)
-		mockRepo.EXPECT().CountFollowers(ctx, userID).Return(int(celebrityFollowersThreshold)-1, nil)
+		mockRepo.EXPECT().GetFollowerCount(ctx, userID).Return(int(celebrityFollowersThreshold)-1, nil)
 		mockRepo.EXPECT().GetFollowersByID(ctx, userID).Return(nil, followersErr)
 
 		gotPost, gotErr := svc.Create(ctx, userID, content)
@@ -109,7 +109,7 @@ func TestService_Create(t *testing.T) {
 		followerIDs := []uuid.UUID{uuid.New()}
 
 		mockRepo.EXPECT().Save(ctx, &post.Post{UserID: userID, Content: content}).Return(nil)
-		mockRepo.EXPECT().CountFollowers(ctx, userID).Return(int(celebrityFollowersThreshold)-1, nil)
+		mockRepo.EXPECT().GetFollowerCount(ctx, userID).Return(int(celebrityFollowersThreshold)-1, nil)
 		mockRepo.EXPECT().GetFollowersByID(ctx, userID).Return(followerIDs, nil)
 		mockFeedRepo.EXPECT().AddToFeed(ctx, gomock.Any(), followerIDs).Return(feedErr)
 
@@ -132,7 +132,7 @@ func TestService_Create(t *testing.T) {
 		followerIDs := []uuid.UUID{uuid.New()}
 
 		mockRepo.EXPECT().Save(ctx, &post.Post{UserID: userID, Content: content}).Return(nil)
-		mockRepo.EXPECT().CountFollowers(ctx, userID).Return(int(celebrityFollowersThreshold)-1, nil)
+		mockRepo.EXPECT().GetFollowerCount(ctx, userID).Return(int(celebrityFollowersThreshold)-1, nil)
 		mockRepo.EXPECT().GetFollowersByID(ctx, userID).Return(followerIDs, nil)
 		mockFeedRepo.EXPECT().AddToFeed(ctx, gomock.Any(), followerIDs).Return(nil)
 

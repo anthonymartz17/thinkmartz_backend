@@ -85,17 +85,18 @@ func (r *PostgresRepository) GetFollowersByID(ctx context.Context, userID uuid.U
 	return followerIDs, nil
 }
 
-// CountFollowers  returns the number of followers a user has by userID
-func (r *PostgresRepository) CountFollowers(ctx context.Context, userID uuid.UUID) (int, error) {
+// GetFollowerCount returns the user's follower count, maintained by a
+// trigger on the follows table rather than computed on read.
+func (r *PostgresRepository) GetFollowerCount(ctx context.Context, userID uuid.UUID) (int, error) {
 
 	query := `
-		SELECT COUNT(*)
-		FROM follows 
-		WHERE followee_id = $1
+		SELECT follower_count
+		FROM users
+		WHERE id = $1
 	`
 	var count int
 	if err := r.Pool.QueryRow(ctx, query, userID).Scan(&count); err != nil {
-		return 0, fmt.Errorf("count followers: %w", err)
+		return 0, fmt.Errorf("get follower count: %w", err)
 	}
 	return count, nil
 }

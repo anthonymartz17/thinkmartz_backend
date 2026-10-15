@@ -42,21 +42,6 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
 }
 
-// CountFollowers mocks base method.
-func (m *MockRepository) CountFollowers(ctx context.Context, userID uuid.UUID) (int, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CountFollowers", ctx, userID)
-	ret0, _ := ret[0].(int)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CountFollowers indicates an expected call of CountFollowers.
-func (mr *MockRepositoryMockRecorder) CountFollowers(ctx, userID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountFollowers", reflect.TypeOf((*MockRepository)(nil).CountFollowers), ctx, userID)
-}
-
 // Delete mocks base method.
 func (m *MockRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	m.ctrl.T.Helper()
@@ -98,6 +83,21 @@ func (m *MockRepository) GetByID(ctx context.Context, postID uuid.UUID) (*post.P
 func (mr *MockRepositoryMockRecorder) GetByID(ctx, postID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockRepository)(nil).GetByID), ctx, postID)
+}
+
+// GetFollowerCount mocks base method.
+func (m *MockRepository) GetFollowerCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetFollowerCount", ctx, userID)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetFollowerCount indicates an expected call of GetFollowerCount.
+func (mr *MockRepositoryMockRecorder) GetFollowerCount(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFollowerCount", reflect.TypeOf((*MockRepository)(nil).GetFollowerCount), ctx, userID)
 }
 
 // GetFollowersByID mocks base method.
