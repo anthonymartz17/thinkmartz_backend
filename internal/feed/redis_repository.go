@@ -1,38 +1,40 @@
-package post
+// Package feed fans posts out to followers' feeds in Redis.
+package feed
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/anthonymartz17/thinkmartz_backend/internal/post"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
 const _feedMaxSize = 50
 
-// validates RedisRepository implements FeedRepository
-var _ FeedRepository = (*RedisRepository)(nil)
+// validates RedisRepository implements post.FeedWriter
+var _ post.FeedWriter = (*RedisRepository)(nil)
 
 // RedisRepository provides a *redis.Client to interact with redis
 type RedisRepository struct {
-	RedisClient *redis.Client
+	client *redis.Client
 }
 
 // NewRedisRepo creates a new instance of RedisRepository
 func NewRedisRepo(client *redis.Client) *RedisRepository {
 	return &RedisRepository{
-		RedisClient: client,
+		client: client,
 	}
 }
 
 // AddToFeed adds postIDS to users feed by batching through a RedisClient Pipeliner,
 // trimming each feed to the _feedMaxSize most recent posts so it doesn't grow unbounded.
-func (r *RedisRepository) AddToFeed(ctx context.Context, p Post, followerIDs []uuid.UUID) error {
-	score := float64(p.CreatedAt.Unix())
+func (r *RedisRepository) AddToFeed(ctx context.Context, p post.Post, followerIDs []uuid.UUID) error {
+	score := float64(p.CreatedAt.UnixMicro())
 
-	_, err := r.RedisClient.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+	_, err := r.client.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		for _, followerID := range followerIDs {
-			key := FeedKey(followerID)
+			key := Key(followerID)
 			pipe.ZAdd(ctx, key, redis.Z{Score: score, Member: p.ID.String()})
 			pipe.ZRemRangeByRank(ctx, key, 0, -(_feedMaxSize + 1))
 		}
@@ -54,9 +56,9 @@ func (r *RedisRepository) RemoveFromFeeds(ctx context.Context, postID uuid.UUID,
 	}
 
 	member := postID.String()
-	_, err := r.RedisClient.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+	_, err := r.client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 		for _, followerID := range followerIDs {
-			pipe.ZRem(ctx, FeedKey(followerID), member)
+			pipe.ZRem(ctx, Key(followerID), member)
 		}
 		return nil
 	})
@@ -67,7 +69,7 @@ func (r *RedisRepository) RemoveFromFeeds(ctx context.Context, postID uuid.UUID,
 	return nil
 }
 
-// FeedKey returns the Redis key holding a user's feed sorted set.
-func FeedKey(userID uuid.UUID) string {
+// Key returns the Redis key holding a user's feed sorted set.
+func Key(userID uuid.UUID) string {
 	return fmt.Sprintf("feed:user:%s", userID.String())
 }

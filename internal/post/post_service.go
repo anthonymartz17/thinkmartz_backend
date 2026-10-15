@@ -28,13 +28,13 @@ type DeleteInput struct {
 // service handles post business logic orchestrating interaction with Repository and RedisRepository
 type service struct {
 	repo                        Repository
-	feedRepo                    FeedRepository
+	feedRepo                    FeedWriter
 	CelebrityFollowersThreshold config.CelebrityFollowersThreshold
 	logger                      *zap.Logger
 }
 
 // NewService creates a new instance of Service
-func NewService(repo Repository, feedRepo FeedRepository, threshold config.CelebrityFollowersThreshold, logger *zap.Logger) Service {
+func NewService(repo Repository, feedRepo FeedWriter, threshold config.CelebrityFollowersThreshold, logger *zap.Logger) Service {
 	return &service{
 		repo:                        repo,
 		feedRepo:                    feedRepo,

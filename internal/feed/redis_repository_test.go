@@ -1,4 +1,4 @@
-package post_test
+package feed_test
 
 import (
 	"context"
@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/anthonymartz17/thinkmartz_backend/internal/config"
+	"github.com/anthonymartz17/thinkmartz_backend/internal/feed"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/post"
 	redisClient "github.com/anthonymartz17/thinkmartz_backend/internal/redis"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +18,7 @@ import (
 func TestAddToFeed(t *testing.T) {
 	t.Run("adds post to follower's feed", func(t *testing.T) {
 		// arrange
-		redisRepo := newTestRedisRepo(t)
+		redisRepo, client := newTestRedisRepo(t)
 		ctx := t.Context()
 
 		followerID := uuid.New()
@@ -31,15 +33,15 @@ func TestAddToFeed(t *testing.T) {
 		// assert
 		require.NoError(t, gotErr)
 
-		key := post.FeedKey(followerID)
-		score, err := redisRepo.RedisClient.ZScore(ctx, key, p.ID.String()).Result()
+		key := feed.Key(followerID)
+		score, err := client.ZScore(ctx, key, p.ID.String()).Result()
 		require.NoError(t, err, "post should exist in follower's feed")
-		assert.Equal(t, float64(p.CreatedAt.Unix()), score, "score should match post's CreatedAt")
+		assert.Equal(t, float64(p.CreatedAt.UnixMicro()), score, "score should match post's CreatedAt")
 	})
 
 	t.Run("context cancelled", func(t *testing.T) {
 		// arrange
-		redisRepo := newTestRedisRepo(t)
+		redisRepo, _ := newTestRedisRepo(t)
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
@@ -57,11 +59,12 @@ func TestAddToFeed(t *testing.T) {
 	})
 }
 
-func newTestRedisRepo(t *testing.T) *post.RedisRepository {
+func newTestRedisRepo(t *testing.T) (*feed.RedisRepository, *redis.Client) {
 	t.Helper()
 
 	cfg, err := config.Load()
 	require.NoError(t, err, "configuration failed to load")
 
-	return post.NewRedisRepo(redisClient.NewRedisClient(cfg.Redis))
+	client := redisClient.NewRedisClient(cfg.Redis)
+	return feed.NewRedisRepo(client), client
 }
