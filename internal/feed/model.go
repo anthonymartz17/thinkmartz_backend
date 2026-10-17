@@ -10,6 +10,6 @@ import (
 // CreatedAt it's scored by. Used both as feed content (Cache.Set) and, once
 // ListPostsBefore exists, as the pagination marker for the next page.
 type Entry struct {
-	PostID    uuid.UUID
-	CreatedAt time.Time
+	PostID    uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
 }
