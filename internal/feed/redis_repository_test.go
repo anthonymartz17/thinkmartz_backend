@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testPageSize = 20
+
 func TestAddToFeed(t *testing.T) {
 	t.Run("adds post to follower's feed", func(t *testing.T) {
 		// arrange
@@ -77,42 +79,42 @@ func TestGet(t *testing.T) {
 		seedMember(ctx, t, client, key, newest, now)
 
 		// act
-		gotIDs, gotErr := redisRepo.Get(ctx, userID)
+		gotIDs, gotErr := redisRepo.Get(ctx, userID, testPageSize)
 
 		// assert
 		require.NoError(t, gotErr)
 		assert.Equal(t, []uuid.UUID{newest, middle, oldest}, gotIDs, "should be ordered newest to oldest")
 	})
 
-	t.Run("returns at most a page", func(t *testing.T) {
+	t.Run("respects the limit", func(t *testing.T) {
 		// arrange
 		redisRepo, client := newTestRedisRepo(t)
 		ctx := t.Context()
 		userID := uuid.New()
 		key := feed.Key(userID)
 
-		const seeded = 25
+		const seeded = testPageSize + 5
 		now := time.Now()
 		ids := make([]uuid.UUID, seeded)
 		for i := range seeded {
 			id := uuid.New()
 			ids[i] = id
-			// earlier index = older: i=0 is oldest, i=24 is newest
+			// earlier index = older: i=0 is oldest, i=seeded-1 is newest
 			seedMember(ctx, t, client, key, id, now.Add(time.Duration(i)*time.Second))
 		}
 
 		// act
-		gotIDs, gotErr := redisRepo.Get(ctx, userID)
+		gotIDs, gotErr := redisRepo.Get(ctx, userID, testPageSize)
 
 		// assert
 		require.NoError(t, gotErr)
-		require.Len(t, gotIDs, 20, "should cap at one page")
+		require.Len(t, gotIDs, testPageSize, "should cap at the given limit")
 
-		wantNewest20 := make([]uuid.UUID, 20)
-		for i := range wantNewest20 {
-			wantNewest20[i] = ids[seeded-1-i] // newest (highest index) first
+		wantNewest := make([]uuid.UUID, testPageSize)
+		for i := range wantNewest {
+			wantNewest[i] = ids[seeded-1-i] // newest (highest index) first
 		}
-		assert.Equal(t, wantNewest20, gotIDs, "should return the 20 newest entries")
+		assert.Equal(t, wantNewest, gotIDs, "should return the limit newest entries")
 	})
 
 	t.Run("missing key", func(t *testing.T) {
@@ -121,7 +123,7 @@ func TestGet(t *testing.T) {
 		ctx := t.Context()
 
 		// act
-		gotIDs, gotErr := redisRepo.Get(ctx, uuid.New())
+		gotIDs, gotErr := redisRepo.Get(ctx, uuid.New(), testPageSize)
 
 		// assert
 		assert.NoError(t, gotErr)
@@ -138,7 +140,7 @@ func TestGet(t *testing.T) {
 		require.NoError(t, client.Expire(ctx, key, 5*time.Second).Err(), "start with a short TTL")
 
 		// act
-		_, gotErr := redisRepo.Get(ctx, userID)
+		_, gotErr := redisRepo.Get(ctx, userID, testPageSize)
 
 		// assert
 		require.NoError(t, gotErr)
@@ -156,7 +158,7 @@ func TestGet(t *testing.T) {
 		require.NoError(t, client.ZAdd(ctx, key, redis.Z{Score: 1, Member: "not-a-uuid"}).Err())
 
 		// act
-		_, gotErr := redisRepo.Get(ctx, userID)
+		_, gotErr := redisRepo.Get(ctx, userID, testPageSize)
 
 		// assert
 		assert.Error(t, gotErr)

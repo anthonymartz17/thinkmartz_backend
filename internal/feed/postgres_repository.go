@@ -24,7 +24,7 @@ func NewPostgresRepository(p *pgxpool.Pool) *PostgresRepository {
 // ListFolloweePostsBefore returns up to limit posts by the users that userID
 // follows, newest first, starting strictly after cursor in
 // (created_at, id) order.
-func (r *PostgresRepository) ListFolloweePostsBefore(ctx context.Context, userID uuid.UUID, cursor *Entry, limit int) ([]post.Post, error) {
+func (r *PostgresRepository) ListFolloweePostsBefore(ctx context.Context, userID uuid.UUID, cursor *Cursor, limit int) ([]post.Post, error) {
 
 	query := `
 		SELECT 	

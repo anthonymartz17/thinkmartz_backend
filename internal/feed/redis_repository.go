@@ -12,11 +12,7 @@ import (
 )
 
 const (
-	_feedPageSize = 20
-	// _feedMaxSize keeps two pages of IDs so page one stays full even if
-	// hydration deletes a few posts.
-	_feedMaxSize = 2 * _feedPageSize
-	_feedTTL     = 7 * 24 * time.Hour
+	_feedTTL = 7 * 24 * time.Hour
 )
 
 // _addToFeedScript adds a post to a feed only if the feed key already exists,
@@ -108,12 +104,12 @@ func (r *RedisRepository) RemoveFromFeeds(ctx context.Context, postID uuid.UUID,
 
 // Get returns the newest _feedPageSize post IDs in the user's feed and
 // refreshes its TTL. A missing feed returns an empty slice and no error.
-func (r *RedisRepository) Get(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+func (r *RedisRepository) Get(ctx context.Context, userID uuid.UUID, limit int) ([]uuid.UUID, error) {
 	key := Key(userID)
 
 	var rangeCmd *redis.StringSliceCmd
 	_, err := r.client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
-		rangeCmd = pipe.ZRevRange(ctx, key, 0, _feedPageSize-1)
+		rangeCmd = pipe.ZRevRange(ctx, key, 0, int64(limit-1))
 		pipe.Expire(ctx, key, _feedTTL)
 		return nil
 	})

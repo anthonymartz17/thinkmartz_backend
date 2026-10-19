@@ -32,7 +32,7 @@ func TestListFolloweePostsBefore(t *testing.T) {
 		newer := seedPost(ctx, t, pool, followee.ID, now)
 		seedPost(ctx, t, pool, stranger.ID, now)
 
-		cursor := &feed.Entry{CreatedAt: now.Add(time.Hour), PostID: uuid.New()}
+		cursor := &feed.Cursor{CreatedAt: now.Add(time.Hour), PostID: uuid.New()}
 
 		// act
 		gotPosts, gotErr := repo.ListFolloweePostsBefore(ctx, userA.ID, cursor, 20)
@@ -58,7 +58,7 @@ func TestListFolloweePostsBefore(t *testing.T) {
 		middle := seedPost(ctx, t, pool, followee.ID, t0.Add(time.Second))
 		newest := seedPost(ctx, t, pool, followee.ID, t0.Add(2*time.Second))
 
-		cursor := &feed.Entry{CreatedAt: t0.Add(2 * time.Second), PostID: newest}
+		cursor := &feed.Cursor{CreatedAt: t0.Add(2 * time.Second), PostID: newest}
 
 		// act
 		gotPosts, gotErr := repo.ListFolloweePostsBefore(ctx, userA.ID, cursor, 20)
@@ -87,7 +87,7 @@ func TestListFolloweePostsBefore(t *testing.T) {
 			higherID, lowerID = second, first
 		}
 
-		cursor := &feed.Entry{CreatedAt: sameTime, PostID: higherID}
+		cursor := &feed.Cursor{CreatedAt: sameTime, PostID: higherID}
 
 		// act
 		gotPosts, gotErr := repo.ListFolloweePostsBefore(ctx, userA.ID, cursor, 20)
@@ -113,7 +113,7 @@ func TestListFolloweePostsBefore(t *testing.T) {
 			id := seedPost(ctx, t, pool, followee.ID, now.Add(time.Duration(i)*time.Second))
 			want = append([]uuid.UUID{id}, want...) // newest first
 		}
-		cursor := &feed.Entry{CreatedAt: now.Add(time.Hour), PostID: uuid.New()}
+		cursor := &feed.Cursor{CreatedAt: now.Add(time.Hour), PostID: uuid.New()}
 
 		// act
 		gotPosts, gotErr := repo.ListFolloweePostsBefore(ctx, userA.ID, cursor, 2)
@@ -131,7 +131,7 @@ func TestListFolloweePostsBefore(t *testing.T) {
 		pool := newTestPool(t)
 		repo := feed.NewPostgresRepository(pool)
 		userA := newTestUser(ctx, t, pool)
-		cursor := &feed.Entry{CreatedAt: time.Now(), PostID: uuid.New()}
+		cursor := &feed.Cursor{CreatedAt: time.Now(), PostID: uuid.New()}
 
 		// act
 		gotPosts, gotErr := repo.ListFolloweePostsBefore(ctx, userA.ID, cursor, 20)
