@@ -41,7 +41,7 @@ func TestService_Create(t *testing.T) {
 	t.Run("count followers fails", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
-		mockFeedRepo := mocks.NewMockFeedRepository(ctrl)
+		mockFeedRepo := mocks.NewMockFeedWriter(ctrl)
 		const celebrityFollowersThreshold config.CelebrityFollowersThreshold = 10
 		core, logs := observer.New(zap.InfoLevel)
 		logger := zap.New(core)
@@ -60,7 +60,7 @@ func TestService_Create(t *testing.T) {
 	t.Run("celebrity threshold met, no fan-out", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
-		mockFeedRepo := mocks.NewMockFeedRepository(ctrl)
+		mockFeedRepo := mocks.NewMockFeedWriter(ctrl)
 		logger := zap.NewNop()
 		const celebrityFollowersThreshold config.CelebrityFollowersThreshold = 10
 
@@ -78,7 +78,7 @@ func TestService_Create(t *testing.T) {
 	t.Run("get followers fails", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
-		mockFeedRepo := mocks.NewMockFeedRepository(ctrl)
+		mockFeedRepo := mocks.NewMockFeedWriter(ctrl)
 		core, logs := observer.New(zap.InfoLevel)
 		logger := zap.New(core)
 		const celebrityFollowersThreshold config.CelebrityFollowersThreshold = 10
@@ -99,7 +99,7 @@ func TestService_Create(t *testing.T) {
 	t.Run("add to feed fails", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
-		mockFeedRepo := mocks.NewMockFeedRepository(ctrl)
+		mockFeedRepo := mocks.NewMockFeedWriter(ctrl)
 		core, logs := observer.New(zap.InfoLevel)
 		logger := zap.New(core)
 		const celebrityFollowersThreshold config.CelebrityFollowersThreshold = 10
@@ -123,7 +123,7 @@ func TestService_Create(t *testing.T) {
 	t.Run("success, non-celebrity fan-out", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
-		mockFeedRepo := mocks.NewMockFeedRepository(ctrl)
+		mockFeedRepo := mocks.NewMockFeedWriter(ctrl)
 		logger := zap.NewNop()
 		const celebrityFollowersThreshold config.CelebrityFollowersThreshold = 10
 
@@ -322,7 +322,7 @@ func newTestService(t *testing.T) (post.Service, *mocks.MockRepository) {
 
 	ctrl := gomock.NewController(t)
 	mockRepo := mocks.NewMockRepository(ctrl)
-	mockFeedRepo := mocks.NewMockFeedRepository(ctrl)
+	mockFeedRepo := mocks.NewMockFeedWriter(ctrl)
 	const threshold config.CelebrityFollowersThreshold = 10
 
 	svc := post.NewService(mockRepo, mockFeedRepo, threshold, zap.NewNop())
