@@ -6,6 +6,7 @@ import (
 	"github.com/anthonymartz17/thinkmartz_backend/internal/auth"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/config"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/database"
+	"github.com/anthonymartz17/thinkmartz_backend/internal/feed"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/logging"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/post"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/redis"
@@ -23,6 +24,7 @@ func NewApp() *fx.App {
 		middleware.Module,
 		httpTransport.Module,
 		post.Module,
+		feed.Module,
 		fx.Provide(logging.NewLogger),
 		fx.Provide(database.NewPostgresPool),
 		fx.Provide(redis.NewRedisClient),

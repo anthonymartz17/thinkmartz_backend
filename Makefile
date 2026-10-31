@@ -3,7 +3,7 @@ export
 
 DB_URL := postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE)
 
-.PHONY: run dev build test test-one lint mocks docker-up docker-down migrate-up migrate-down migrate-create clean install-hooks fmt
+.PHONY: run dev build test test-one lint mocks docker-up docker-down db-shell redis-shell migrate-up migrate-down migrate-create seed seed-down clean install-hooks fmt
 
 ## --- Build & Run ---
 
@@ -40,11 +40,20 @@ mocks:
 	mockgen -source=internal/post/repository.go \
 		-destination=internal/post/mocks/mock_repository.go \
 		-package=mocks
-	mockgen -source=internal/post/feed_repository.go \
-		-destination=internal/post/mocks/mock_feed_repository.go \
+	mockgen -source=internal/post/feed_writer.go \
+		-destination=internal/post/mocks/mock_feed_writer.go \
 		-package=mocks
 	mockgen -source=internal/post/service.go \
 		-destination=internal/post/mocks/mock_service.go \
+		-package=mocks
+	mockgen -source=internal/feed/repository.go \
+		-destination=internal/feed/mocks/mock_repository.go \
+		-package=mocks
+	mockgen -source=internal/feed/cache.go \
+		-destination=internal/feed/mocks/mock_cache.go \
+		-package=mocks
+	mockgen -source=internal/feed/reader.go \
+		-destination=internal/feed/mocks/mock_reader.go \
 		-package=mocks
 
 ## --- Docker ---
@@ -54,6 +63,12 @@ docker-up:
 
 docker-down:
 	docker-compose down
+
+db-shell:
+	docker exec -it thinkmartz_backend-postgres-1 psql -U postgres -d thinkmartz
+
+redis-shell:
+	docker exec -it thinkmartz_backend-redis-1 redis-cli
 
 ## --- Migrations ---
 
@@ -65,6 +80,14 @@ migrate-down:
 
 migrate-create:
 	migrate create -ext sql -dir db/migrations -seq $(NAME)
+
+## --- Seed Data ---
+
+seed:
+	psql "$(DB_URL)" -f db/seed.sql
+
+seed-down:
+	psql "$(DB_URL)" -c "DELETE FROM users WHERE email LIKE '%@seed.example';"
 
 ## --- Dev Tooling ---
 

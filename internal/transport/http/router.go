@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/anthonymartz17/thinkmartz_backend/internal/auth"
+	"github.com/anthonymartz17/thinkmartz_backend/internal/feed"
 	"github.com/anthonymartz17/thinkmartz_backend/internal/post"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -16,6 +17,7 @@ type RouterParams struct {
 	fx.In
 	AuthHandler    *auth.Handler
 	PostHandler    *post.Handler
+	FeedHandler    *feed.Handler
 	AuthMiddleware func(http.Handler) http.Handler `name:"authMiddleware"`
 }
 
@@ -37,6 +39,7 @@ func NewRouter(p RouterParams) chi.Router {
 		r.Use(p.AuthMiddleware)
 		p.AuthHandler.RegisterProtectedRoutes(r)
 		p.PostHandler.RegisterProtectedRoutes(r)
+		p.FeedHandler.RegisterProtectedRoutes(r)
 
 	})
 
