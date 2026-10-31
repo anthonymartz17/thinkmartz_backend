@@ -22,15 +22,15 @@ type AccessTokenClaims struct {
 
 // TokenService handles JWT and Opaque refresh token signing and issuance.
 type TokenService struct {
-	JWTConfig   config.JWTConfig
-	RedisClient *redis.Client
+	jwtConfig   config.JWTConfig
+	redisClient *redis.Client
 }
 
 // NewTokenService builds and returns a new TokenService
 func NewTokenService(t config.JWTConfig, client *redis.Client) *TokenService {
 	return &TokenService{
-		JWTConfig:   t,
-		RedisClient: client,
+		jwtConfig:   t,
+		redisClient: client,
 	}
 
 }
@@ -40,13 +40,13 @@ func (t *TokenService) IssueAccessToken(userID uuid.UUID) (string, error) {
 	claims := &AccessTokenClaims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(t.JWTConfig.Expiry)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(t.jwtConfig.Expiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	signedToken, err := token.SignedString([]byte(t.JWTConfig.Secret))
+	signedToken, err := token.SignedString([]byte(t.jwtConfig.Secret))
 	if err != nil {
 		return "", fmt.Errorf("sign access token: %w", err)
 	}
@@ -69,7 +69,7 @@ func (t *TokenService) IssueRefreshToken(ctx context.Context, userID uuid.UUID) 
 	}
 
 	key := refreshTokenKey(opaque)
-	err = t.RedisClient.Set(ctx, key, userID.String(), t.JWTConfig.RefreshExpiry).Err()
+	err = t.redisClient.Set(ctx, key, userID.String(), t.jwtConfig.RefreshExpiry).Err()
 	if err != nil {
 		return "", fmt.Errorf("set refreshToken on redis: %w", err)
 	}
@@ -90,7 +90,7 @@ func generateRefreshTokenValue() (string, error) {
 func (t *TokenService) ValidateRefreshToken(ctx context.Context, opaque string) (uuid.UUID, error) {
 
 	key := refreshTokenKey(opaque)
-	val, err := t.RedisClient.Get(ctx, key).Result()
+	val, err := t.redisClient.Get(ctx, key).Result()
 
 	if errors.Is(err, redis.Nil) {
 		return uuid.Nil, ErrRefreshTokenNotFound
@@ -112,7 +112,7 @@ func (t *TokenService) ValidateRefreshToken(ctx context.Context, opaque string) 
 // InvalidateRefreshToken invalidates old token by deleting it from redis
 func (t *TokenService) InvalidateRefreshToken(ctx context.Context, token string) error {
 	key := refreshTokenKey(token)
-	deletedCount, err := t.RedisClient.Del(ctx, key).Result()
+	deletedCount, err := t.redisClient.Del(ctx, key).Result()
 
 	if err != nil {
 		return fmt.Errorf("invalidate refresh token: %w", err)

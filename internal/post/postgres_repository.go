@@ -20,13 +20,13 @@ var _ Repository = (*PostgresRepository)(nil)
 
 // PostgresRepository provides a connection pool and methods to interact with database
 type PostgresRepository struct {
-	Pool *pgxpool.Pool
+	pool *pgxpool.Pool
 }
 
 // NewPostgresRepository creates and returns a new PostgresRepository
 func NewPostgresRepository(p *pgxpool.Pool) *PostgresRepository {
 	return &PostgresRepository{
-		Pool: p,
+		pool: p,
 	}
 }
 
@@ -38,7 +38,7 @@ func (r *PostgresRepository) Save(ctx context.Context, p *Post) error {
 	VALUES ($1, $2)
 	RETURNING id, created_at, updated_at
 	`
-	err := r.Pool.QueryRow(
+	err := r.pool.QueryRow(
 		ctx,
 		query,
 		p.UserID,
@@ -62,7 +62,7 @@ func (r *PostgresRepository) GetFollowersByID(ctx context.Context, userID uuid.U
 
 	var followerIDs []uuid.UUID
 
-	rows, err := r.Pool.Query(ctx, query, userID)
+	rows, err := r.pool.Query(ctx, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("query followers: %w", err)
 	}
@@ -95,7 +95,7 @@ func (r *PostgresRepository) GetFollowerCount(ctx context.Context, userID uuid.U
 		WHERE id = $1
 	`
 	var count int
-	if err := r.Pool.QueryRow(ctx, query, userID).Scan(&count); err != nil {
+	if err := r.pool.QueryRow(ctx, query, userID).Scan(&count); err != nil {
 		return 0, fmt.Errorf("get follower count: %w", err)
 	}
 	return count, nil
@@ -111,7 +111,7 @@ func (r *PostgresRepository) GetByID(ctx context.Context, postID uuid.UUID) (*Po
 
 	var post Post
 
-	err := r.Pool.QueryRow(ctx, query, postID).Scan(
+	err := r.pool.QueryRow(ctx, query, postID).Scan(
 		&post.ID,
 		&post.UserID,
 		&post.Content,
@@ -142,7 +142,7 @@ func (r *PostgresRepository) Update(ctx context.Context, p *Post) error {
 		RETURNING user_id, content,like_count,comment_count, created_at, updated_at 
 	`
 
-	err := r.Pool.QueryRow(ctx, query, p.Content, p.ID).Scan(
+	err := r.pool.QueryRow(ctx, query, p.Content, p.ID).Scan(
 		&p.UserID,
 		&p.Content,
 		&p.LikeCount,
@@ -165,7 +165,7 @@ func (r *PostgresRepository) Update(ctx context.Context, p *Post) error {
 func (r *PostgresRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	const query = `DELETE FROM posts WHERE id = $1`
 
-	tag, err := r.Pool.Exec(ctx, query, id)
+	tag, err := r.pool.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("delete post: %w", err)
 	}
@@ -184,7 +184,7 @@ func (r *PostgresRepository) SaveLike(ctx context.Context, like Like) error {
 		VALUES ($1, $2)
 		ON CONFLICT (user_id, post_id) DO NOTHING`
 
-	_, err := r.Pool.Exec(ctx, query, like.UserID, like.PostID)
+	_, err := r.pool.Exec(ctx, query, like.UserID, like.PostID)
 	if err == nil {
 		return nil
 	}
@@ -206,7 +206,7 @@ func (r *PostgresRepository) DeleteLike(ctx context.Context, like Like) error {
 		DELETE FROM post_likes
 		WHERE user_id = $1 AND post_id = $2`
 
-	if _, err := r.Pool.Exec(ctx, query, like.UserID, like.PostID); err != nil {
+	if _, err := r.pool.Exec(ctx, query, like.UserID, like.PostID); err != nil {
 		return fmt.Errorf("delete like: %w", err)
 	}
 	return nil

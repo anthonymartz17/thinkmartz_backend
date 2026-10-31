@@ -29,7 +29,7 @@ type DeleteInput struct {
 type service struct {
 	repo                        Repository
 	feedRepo                    FeedWriter
-	CelebrityFollowersThreshold config.CelebrityFollowersThreshold
+	celebrityFollowersThreshold config.CelebrityFollowersThreshold
 	logger                      *zap.Logger
 }
 
@@ -38,7 +38,7 @@ func NewService(repo Repository, feedRepo FeedWriter, threshold config.Celebrity
 	return &service{
 		repo:                        repo,
 		feedRepo:                    feedRepo,
-		CelebrityFollowersThreshold: threshold,
+		celebrityFollowersThreshold: threshold,
 		logger:                      logger,
 	}
 }
@@ -64,7 +64,7 @@ func (s *service) Create(ctx context.Context, userID uuid.UUID, content string) 
 		return post, nil
 	}
 
-	if count >= int(s.CelebrityFollowersThreshold) {
+	if count >= int(s.celebrityFollowersThreshold) {
 		return post, nil
 	}
 
@@ -135,7 +135,7 @@ func (s *service) Delete(ctx context.Context, input DeleteInput) error {
 		return nil
 	}
 
-	if count >= int(s.CelebrityFollowersThreshold) {
+	if count >= int(s.celebrityFollowersThreshold) {
 		return nil // celebrity posts are never fanned out
 	}
 

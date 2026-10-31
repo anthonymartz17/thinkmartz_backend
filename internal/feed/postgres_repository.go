@@ -11,13 +11,13 @@ import (
 
 // PostgresRepository provides a connection pool and methods to interact with database
 type PostgresRepository struct {
-	Pool *pgxpool.Pool
+	pool *pgxpool.Pool
 }
 
 // NewPostgresRepository creates and returns a new PostgresRepository
 func NewPostgresRepository(p *pgxpool.Pool) *PostgresRepository {
 	return &PostgresRepository{
-		Pool: p,
+		pool: p,
 	}
 }
 
@@ -43,7 +43,7 @@ func (r *PostgresRepository) ListFolloweePostsBefore(ctx context.Context, userID
 		LIMIT $4; 
 	`
 
-	rows, err := r.Pool.Query(ctx, query, userID, cursor.CreatedAt, cursor.PostID, limit)
+	rows, err := r.pool.Query(ctx, query, userID, cursor.CreatedAt, cursor.PostID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list followee posts before cursor: %w", err)
 	}
@@ -93,7 +93,7 @@ func (r *PostgresRepository) ListNonCelebrityFeedEntries(ctx context.Context, us
 
 	`
 
-	rows, err := r.Pool.Query(ctx, query, userID, threshold, limit)
+	rows, err := r.pool.Query(ctx, query, userID, threshold, limit)
 
 	if err != nil {
 		return nil, fmt.Errorf("query non-celebrity feed entries: %w", err)
@@ -145,7 +145,7 @@ func (r *PostgresRepository) ListWithCelebrityPosts(ctx context.Context, userID 
 		LIMIT $4
 	`
 
-	rows, err := r.Pool.Query(ctx, query, userID, ids, threshold, limit)
+	rows, err := r.pool.Query(ctx, query, userID, ids, threshold, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list posts with celebrity posts: %w", err)
 	}

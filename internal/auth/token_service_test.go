@@ -18,12 +18,11 @@ import (
 func TestIssueAccessToken(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		// arrange
-		svc := &auth.TokenService{
-			JWTConfig: config.JWTConfig{
-				Secret: "test-secret",
-				Expiry: 15 * time.Minute,
-			},
+		jwtConfig := config.JWTConfig{
+			Secret: "test-secret",
+			Expiry: 15 * time.Minute,
 		}
+		svc := auth.NewTokenService(jwtConfig, nil)
 
 		userID := uuid.New()
 
@@ -34,14 +33,14 @@ func TestIssueAccessToken(t *testing.T) {
 		var claims auth.AccessTokenClaims
 
 		parsedToken, err := jwt.ParseWithClaims(tokenString, &claims, func(_ *jwt.Token) (interface{}, error) {
-			return []byte(svc.JWTConfig.Secret), nil
+			return []byte(jwtConfig.Secret), nil
 		})
 		require.NoError(t, err)
 
 		// assert
 		assert.True(t, parsedToken.Valid)
 		assert.Equal(t, userID, claims.UserID)
-		assert.WithinDuration(t, time.Now().Add(svc.JWTConfig.Expiry), claims.ExpiresAt.Time, time.Second)
+		assert.WithinDuration(t, time.Now().Add(jwtConfig.Expiry), claims.ExpiresAt.Time, time.Second)
 	})
 }
 
@@ -49,7 +48,7 @@ func TestIssueRefreshToken(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		// arrange
 		ctx := t.Context()
-		tokenService := newTestTokenService(t)
+		tokenService, rdb := newTestTokenService(t)
 		userID := uuid.New()
 
 		// act
@@ -58,7 +57,7 @@ func TestIssueRefreshToken(t *testing.T) {
 		// assert
 		require.NoError(t, gotErr, "should not fail to issueRefreshToken on success case")
 		key := fmt.Sprintf("session:refresh_token:%s", gotRefreshToken)
-		storedUserID, err := tokenService.RedisClient.Get(ctx, key).Result()
+		storedUserID, err := rdb.Get(ctx, key).Result()
 
 		assert.NoError(t, err, "should not fail on success case")
 		assert.Equal(t, userID.String(), storedUserID, "stored value should be the issuing user's ID")
@@ -66,10 +65,10 @@ func TestIssueRefreshToken(t *testing.T) {
 
 	t.Run("Fails when redis is unreachable", func(t *testing.T) {
 		// arrange
-		tokenService := newTestTokenService(t)
+		tokenService, rdb := newTestTokenService(t)
 		userID := uuid.New()
 
-		require.NoError(t, tokenService.RedisClient.Close(), "should close redis client cleanly for setup")
+		require.NoError(t, rdb.Close(), "should close redis client cleanly for setup")
 
 		// act
 		gotRefreshToken, gotErr := tokenService.IssueRefreshToken(t.Context(), userID)
@@ -84,7 +83,7 @@ func TestValidateRefreshToken(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		// arrange
 		ctx := t.Context()
-		tokenService := newTestTokenService(t)
+		tokenService, _ := newTestTokenService(t)
 		userID := uuid.New()
 
 		opaque, err := tokenService.IssueRefreshToken(ctx, userID)
@@ -101,7 +100,7 @@ func TestValidateRefreshToken(t *testing.T) {
 	t.Run("Fails when token is not found", func(t *testing.T) {
 		// arrange
 		ctx := t.Context()
-		tokenService := newTestTokenService(t)
+		tokenService, _ := newTestTokenService(t)
 
 		// act
 		gotUserID, gotErr := tokenService.ValidateRefreshToken(ctx, "non-existent-opaque-token")
@@ -114,11 +113,11 @@ func TestValidateRefreshToken(t *testing.T) {
 	t.Run("Fails when stored value is malformed", func(t *testing.T) {
 		// arrange
 		ctx := t.Context()
-		tokenService := newTestTokenService(t)
+		tokenService, rdb := newTestTokenService(t)
 		opaque := "malformed-value-opaque-token"
 		key := fmt.Sprintf("session:refresh_token:%s", opaque)
 
-		require.NoError(t, tokenService.RedisClient.Set(ctx, key, "not-a-valid-uuid", time.Minute).Err(),
+		require.NoError(t, rdb.Set(ctx, key, "not-a-valid-uuid", time.Minute).Err(),
 			"should set up a malformed stored value")
 
 		// act
@@ -132,8 +131,8 @@ func TestValidateRefreshToken(t *testing.T) {
 
 	t.Run("Fails when redis is unreachable", func(t *testing.T) {
 		// arrange
-		tokenService := newTestTokenService(t)
-		require.NoError(t, tokenService.RedisClient.Close(), "should close redis client cleanly for setup")
+		tokenService, rdb := newTestTokenService(t)
+		require.NoError(t, rdb.Close(), "should close redis client cleanly for setup")
 
 		// act
 		gotUserID, gotErr := tokenService.ValidateRefreshToken(t.Context(), "any-opaque-token")
@@ -149,7 +148,7 @@ func TestInvalidateRefreshToken(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		// arrange
 		ctx := t.Context()
-		tokenService := newTestTokenService(t)
+		tokenService, rdb := newTestTokenService(t)
 		userID := uuid.New()
 
 		opaque, err := tokenService.IssueRefreshToken(ctx, userID)
@@ -162,14 +161,14 @@ func TestInvalidateRefreshToken(t *testing.T) {
 		assert.NoError(t, gotErr, "should not fail on success case")
 
 		key := fmt.Sprintf("session:refresh_token:%s", opaque)
-		_, err = tokenService.RedisClient.Get(ctx, key).Result()
+		_, err = rdb.Get(ctx, key).Result()
 		assert.ErrorIs(t, err, redis.Nil, "token should no longer exist in redis after invalidation")
 	})
 
 	t.Run("Fails when token is not found", func(t *testing.T) {
 		// arrange
 		ctx := t.Context()
-		tokenService := newTestTokenService(t)
+		tokenService, _ := newTestTokenService(t)
 
 		// act
 		gotErr := tokenService.InvalidateRefreshToken(ctx, "non-existent-opaque-token")
@@ -180,8 +179,8 @@ func TestInvalidateRefreshToken(t *testing.T) {
 
 	t.Run("Fails when redis is unreachable", func(t *testing.T) {
 		// arrange
-		tokenService := newTestTokenService(t)
-		require.NoError(t, tokenService.RedisClient.Close(), "should close redis client cleanly for setup")
+		tokenService, rdb := newTestTokenService(t)
+		require.NoError(t, rdb.Close(), "should close redis client cleanly for setup")
 
 		// act
 		gotErr := tokenService.InvalidateRefreshToken(t.Context(), "any-opaque-token")
@@ -192,7 +191,7 @@ func TestInvalidateRefreshToken(t *testing.T) {
 	})
 }
 
-func newTestTokenService(t *testing.T) *auth.TokenService {
+func newTestTokenService(t *testing.T) (*auth.TokenService, *redis.Client) {
 	t.Helper()
 
 	cfg, err := config.Load()
@@ -201,5 +200,5 @@ func newTestTokenService(t *testing.T) *auth.TokenService {
 	client := redisClient.NewRedisClient(cfg.Redis)
 	tokenService := auth.NewTokenService(cfg.JWT, client)
 
-	return tokenService
+	return tokenService, client
 }
