@@ -3,7 +3,7 @@ export
 
 DB_URL := postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE)
 
-.PHONY: run dev build test test-one lint mocks docker-up docker-down migrate-up migrate-down migrate-create clean install-hooks fmt
+.PHONY: run dev build test test-one lint mocks docker-up docker-down db-shell redis-shell migrate-up migrate-down migrate-create seed seed-down clean install-hooks fmt
 
 ## --- Build & Run ---
 
@@ -64,6 +64,12 @@ docker-up:
 docker-down:
 	docker-compose down
 
+db-shell:
+	docker exec -it thinkmartz_backend-postgres-1 psql -U postgres -d thinkmartz
+
+redis-shell:
+	docker exec -it thinkmartz_backend-redis-1 redis-cli
+
 ## --- Migrations ---
 
 migrate-up:
@@ -74,6 +80,14 @@ migrate-down:
 
 migrate-create:
 	migrate create -ext sql -dir db/migrations -seq $(NAME)
+
+## --- Seed Data ---
+
+seed:
+	psql "$(DB_URL)" -f db/seed.sql
+
+seed-down:
+	psql "$(DB_URL)" -c "DELETE FROM users WHERE email LIKE '%@seed.example';"
 
 ## --- Dev Tooling ---
 
