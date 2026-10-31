@@ -52,6 +52,9 @@ mocks:
 	mockgen -source=internal/feed/cache.go \
 		-destination=internal/feed/mocks/mock_cache.go \
 		-package=mocks
+	mockgen -source=internal/feed/reader.go \
+		-destination=internal/feed/mocks/mock_reader.go \
+		-package=mocks
 
 ## --- Docker ---
 

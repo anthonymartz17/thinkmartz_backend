@@ -18,6 +18,9 @@ const (
 	_feedMaxSize = 2 * _feedPageSize
 )
 
+// validates Service implements Reader
+var _ Reader = (*Service)(nil)
+
 // Service assembles a user's feed from the Redis cache and, on a cache
 // miss or for older pages, from Postgres.
 type Service struct {
