@@ -34,6 +34,9 @@ mocks:
 	mockgen -source=internal/auth/token_issuer.go \
 		-destination=internal/auth/mocks/mock_tokenservice.go \
 		-package=mocks
+	mockgen -source=internal/auth/session_repository.go \
+		-destination=internal/auth/mocks/mock_session_repository.go \
+		-package=mocks
 	mockgen -source=internal/auth/authenticator.go \
 		-destination=internal/auth/mocks/mock_service.go \
 		-package=mocks

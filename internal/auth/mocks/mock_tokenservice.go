@@ -10,7 +10,6 @@
 package mocks
 
 import (
-	context "context"
 	reflect "reflect"
 
 	uuid "github.com/google/uuid"
@@ -41,18 +40,19 @@ func (m *MockTokenIssuer) EXPECT() *MockTokenIssuerMockRecorder {
 	return m.recorder
 }
 
-// InvalidateRefreshToken mocks base method.
-func (m *MockTokenIssuer) InvalidateRefreshToken(ctx context.Context, token string) error {
+// GenerateRefreshToken mocks base method.
+func (m *MockTokenIssuer) GenerateRefreshToken() (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InvalidateRefreshToken", ctx, token)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "GenerateRefreshToken")
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// InvalidateRefreshToken indicates an expected call of InvalidateRefreshToken.
-func (mr *MockTokenIssuerMockRecorder) InvalidateRefreshToken(ctx, token any) *gomock.Call {
+// GenerateRefreshToken indicates an expected call of GenerateRefreshToken.
+func (mr *MockTokenIssuerMockRecorder) GenerateRefreshToken() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InvalidateRefreshToken", reflect.TypeOf((*MockTokenIssuer)(nil).InvalidateRefreshToken), ctx, token)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateRefreshToken", reflect.TypeOf((*MockTokenIssuer)(nil).GenerateRefreshToken))
 }
 
 // IssueAccessToken mocks base method.
@@ -68,34 +68,4 @@ func (m *MockTokenIssuer) IssueAccessToken(userID uuid.UUID) (string, error) {
 func (mr *MockTokenIssuerMockRecorder) IssueAccessToken(userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueAccessToken", reflect.TypeOf((*MockTokenIssuer)(nil).IssueAccessToken), userID)
-}
-
-// IssueRefreshToken mocks base method.
-func (m *MockTokenIssuer) IssueRefreshToken(ctx context.Context, userID uuid.UUID) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IssueRefreshToken", ctx, userID)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// IssueRefreshToken indicates an expected call of IssueRefreshToken.
-func (mr *MockTokenIssuerMockRecorder) IssueRefreshToken(ctx, userID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueRefreshToken", reflect.TypeOf((*MockTokenIssuer)(nil).IssueRefreshToken), ctx, userID)
-}
-
-// ValidateRefreshToken mocks base method.
-func (m *MockTokenIssuer) ValidateRefreshToken(ctx context.Context, opaque string) (uuid.UUID, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateRefreshToken", ctx, opaque)
-	ret0, _ := ret[0].(uuid.UUID)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ValidateRefreshToken indicates an expected call of ValidateRefreshToken.
-func (mr *MockTokenIssuerMockRecorder) ValidateRefreshToken(ctx, opaque any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateRefreshToken", reflect.TypeOf((*MockTokenIssuer)(nil).ValidateRefreshToken), ctx, opaque)
 }

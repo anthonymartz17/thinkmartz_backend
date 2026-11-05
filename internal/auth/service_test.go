@@ -30,9 +30,10 @@ func TestRegister_PasswordTooLong(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockRepo := mocks.NewMockRepository(ctrl)
 	mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+	mockSessions := mocks.NewMockSessionRepository(ctrl)
 	logger := zap.NewNop()
 
-	newService, err := auth.NewService(mockRepo, mockTokenSrv, logger)
+	newService, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, logger)
 	require.NoError(t, err, "failed to construct Service")
 
 	// act
@@ -48,6 +49,7 @@ func TestRegister(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 
 		input := auth.RegisterInput{
 			Email:    fmt.Sprintf("test@email.com%s", t.Name()),
@@ -75,13 +77,17 @@ func TestRegister(t *testing.T) {
 			Return("FAKE.ACCESS.TOKEN", nil)
 
 		mockTokenSrv.EXPECT().
-			IssueRefreshToken(ctx, gomock.Cond(func(x any) bool {
+			GenerateRefreshToken().
+			Return("FAKE-REFRESH-TOKEN", nil)
+
+		mockSessions.EXPECT().
+			Set(ctx, "FAKE-REFRESH-TOKEN", gomock.Cond(func(x any) bool {
 				id, ok := x.(uuid.UUID)
 				return ok && id == savedUserID
 			})).
-			Return("FAKE-REFRESH-TOKEN", nil)
+			Return(nil)
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		// act
@@ -99,6 +105,7 @@ func TestRegister(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 		input := auth.RegisterInput{
 			Email:    fmt.Sprintf("test@email.com%s", t.Name()),
 			Username: fmt.Sprintf("fakeUsername%s", t.Name()),
@@ -109,7 +116,7 @@ func TestRegister(t *testing.T) {
 			Save(ctx, gomock.Any()).
 			Return(errors.New("database failure"))
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		// act
@@ -119,12 +126,13 @@ func TestRegister(t *testing.T) {
 		assert.ErrorContains(t, err, "database failure")
 	})
 
-	t.Run("Triggers Delete Rollback when Refresh Token fails", func(t *testing.T) {
+	t.Run("Triggers Delete Rollback when GenerateRefreshToken fails", func(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 		input := auth.RegisterInput{
 			Email:    fmt.Sprintf("test@email.com%s", t.Name()),
 			Username: fmt.Sprintf("fakeUsername%s", t.Name()),
@@ -146,7 +154,7 @@ func TestRegister(t *testing.T) {
 			Return("FAKE.ACCESS.TOKEN", nil)
 
 		mockTokenSrv.EXPECT().
-			IssueRefreshToken(ctx, gomock.Any()).
+			GenerateRefreshToken().
 			Return("", errors.New("refresh token service unavailable"))
 
 		mockRepo.EXPECT().
@@ -156,7 +164,7 @@ func TestRegister(t *testing.T) {
 			})).
 			Return(nil)
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		// act
@@ -164,6 +172,58 @@ func TestRegister(t *testing.T) {
 
 		// assert
 		assert.ErrorContains(t, err, "refresh token: refresh token service unavailable")
+	})
+
+	t.Run("Triggers Delete Rollback when session Set fails", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		ctrl := gomock.NewController(t)
+		mockRepo := mocks.NewMockRepository(ctrl)
+		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
+		input := auth.RegisterInput{
+			Email:    fmt.Sprintf("test@email.com%s", t.Name()),
+			Username: fmt.Sprintf("fakeUsername%s", t.Name()),
+			Password: strings.Repeat("a", 70),
+		}
+
+		var savedUserID uuid.UUID
+
+		mockRepo.EXPECT().
+			Save(ctx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, u *auth.User) error {
+				savedUserID = uuid.New()
+				u.ID = savedUserID
+				return nil
+			})
+
+		mockTokenSrv.EXPECT().
+			IssueAccessToken(gomock.Any()).
+			Return("FAKE.ACCESS.TOKEN", nil)
+
+		mockTokenSrv.EXPECT().
+			GenerateRefreshToken().
+			Return("FAKE-REFRESH-TOKEN", nil)
+
+		mockSessions.EXPECT().
+			Set(ctx, "FAKE-REFRESH-TOKEN", gomock.Any()).
+			Return(errors.New("session store unavailable"))
+
+		mockRepo.EXPECT().
+			Delete(ctx, gomock.Cond(func(x any) bool {
+				id, ok := x.(uuid.UUID)
+				return ok && id == savedUserID
+			})).
+			Return(nil)
+
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
+
+		// act
+		_, err = svc.Register(ctx, input)
+
+		// assert
+		assert.ErrorContains(t, err, "refresh token: session store unavailable")
 	})
 }
 
@@ -174,6 +234,7 @@ func TestLogin(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 
 		email := fmt.Sprintf("test@email.com%s", t.Name())
 		password := "correct-password"
@@ -197,10 +258,14 @@ func TestLogin(t *testing.T) {
 			Return("FAKE.ACCESS.TOKEN", nil)
 
 		mockTokenSrv.EXPECT().
-			IssueRefreshToken(ctx, userID).
+			GenerateRefreshToken().
 			Return("FAKE-REFRESH-TOKEN", nil)
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		mockSessions.EXPECT().
+			Set(ctx, "FAKE-REFRESH-TOKEN", userID).
+			Return(nil)
+
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		input := auth.LoginInput{Email: email, Password: password}
@@ -221,6 +286,7 @@ func TestLogin(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 
 		email := fmt.Sprintf("test@email.com%s", t.Name())
 
@@ -228,7 +294,7 @@ func TestLogin(t *testing.T) {
 			FindByEmail(ctx, email).
 			Return(nil, auth.ErrUserNotFound)
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		input := auth.LoginInput{Email: email, Password: "whatever"}
@@ -247,6 +313,7 @@ func TestLogin(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 
 		email := fmt.Sprintf("test@email.com%s", t.Name())
 		hash, err := bcrypt.GenerateFromPassword([]byte("correct-password"), bcrypt.DefaultCost)
@@ -263,7 +330,7 @@ func TestLogin(t *testing.T) {
 			FindByEmail(ctx, email).
 			Return(storedUser, nil)
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		input := auth.LoginInput{Email: email, Password: "wrong-password"}
@@ -282,6 +349,7 @@ func TestLogin(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 
 		email := fmt.Sprintf("test@email.com%s", t.Name())
 		password := "correct-password"
@@ -304,7 +372,7 @@ func TestLogin(t *testing.T) {
 			IssueAccessToken(userID).
 			Return("", errors.New("access token service unavailable"))
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		input := auth.LoginInput{Email: email, Password: password}
@@ -317,12 +385,13 @@ func TestLogin(t *testing.T) {
 		assert.ErrorContains(t, err, "access token service unavailable")
 	})
 
-	t.Run("Fails when IssueRefreshToken errors", func(t *testing.T) {
+	t.Run("Fails when GenerateRefreshToken errors", func(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 
 		email := fmt.Sprintf("test@email.com%s", t.Name())
 		password := "correct-password"
@@ -346,10 +415,10 @@ func TestLogin(t *testing.T) {
 			Return("FAKE.ACCESS.TOKEN", nil)
 
 		mockTokenSrv.EXPECT().
-			IssueRefreshToken(ctx, userID).
+			GenerateRefreshToken().
 			Return("", errors.New("refresh token service unavailable"))
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		input := auth.LoginInput{Email: email, Password: password}
@@ -361,6 +430,56 @@ func TestLogin(t *testing.T) {
 		assert.Nil(t, gotResp)
 		assert.ErrorContains(t, err, "refresh token service unavailable")
 	})
+
+	t.Run("Fails when session Set errors", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		ctrl := gomock.NewController(t)
+		mockRepo := mocks.NewMockRepository(ctrl)
+		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
+
+		email := fmt.Sprintf("test@email.com%s", t.Name())
+		password := "correct-password"
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		require.NoError(t, err)
+
+		userID := uuid.New()
+		storedUser := &auth.User{
+			ID:           userID,
+			Email:        email,
+			Username:     fmt.Sprintf("fakeUsername%s", t.Name()),
+			PasswordHash: string(hash),
+		}
+
+		mockRepo.EXPECT().
+			FindByEmail(ctx, email).
+			Return(storedUser, nil)
+
+		mockTokenSrv.EXPECT().
+			IssueAccessToken(userID).
+			Return("FAKE.ACCESS.TOKEN", nil)
+
+		mockTokenSrv.EXPECT().
+			GenerateRefreshToken().
+			Return("FAKE-REFRESH-TOKEN", nil)
+
+		mockSessions.EXPECT().
+			Set(ctx, "FAKE-REFRESH-TOKEN", userID).
+			Return(errors.New("session store unavailable"))
+
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
+		require.NoError(t, err, "failed to construct Service")
+
+		input := auth.LoginInput{Email: email, Password: password}
+
+		// act
+		gotResp, err := svc.Login(ctx, input)
+
+		// assert
+		assert.Nil(t, gotResp)
+		assert.ErrorContains(t, err, "session store unavailable")
+	})
 }
 
 func TestRefreshToken(t *testing.T) {
@@ -370,11 +489,12 @@ func TestRefreshToken(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 
 		userID := uuid.New()
 
-		mockTokenSrv.EXPECT().
-			ValidateRefreshToken(ctx, "old-opaque-token").
+		mockSessions.EXPECT().
+			GetDel(ctx, "old-opaque-token").
 			Return(userID, nil)
 
 		mockTokenSrv.EXPECT().
@@ -382,14 +502,14 @@ func TestRefreshToken(t *testing.T) {
 			Return("FAKE.ACCESS.TOKEN", nil)
 
 		mockTokenSrv.EXPECT().
-			IssueRefreshToken(ctx, userID).
+			GenerateRefreshToken().
 			Return("FAKE-NEW-REFRESH-TOKEN", nil)
 
-		mockTokenSrv.EXPECT().
-			InvalidateRefreshToken(ctx, "old-opaque-token").
+		mockSessions.EXPECT().
+			Set(ctx, "FAKE-NEW-REFRESH-TOKEN", userID).
 			Return(nil)
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		// act
@@ -407,12 +527,13 @@ func TestRefreshToken(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 
-		mockTokenSrv.EXPECT().
-			ValidateRefreshToken(ctx, "bad-opaque-token").
+		mockSessions.EXPECT().
+			GetDel(ctx, "bad-opaque-token").
 			Return(uuid.Nil, auth.ErrRefreshTokenNotFound)
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		// act
@@ -429,18 +550,19 @@ func TestRefreshToken(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 
 		userID := uuid.New()
 
-		mockTokenSrv.EXPECT().
-			ValidateRefreshToken(ctx, "old-opaque-token").
+		mockSessions.EXPECT().
+			GetDel(ctx, "old-opaque-token").
 			Return(userID, nil)
 
 		mockTokenSrv.EXPECT().
 			IssueAccessToken(userID).
 			Return("", errors.New("access token service unavailable"))
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		// act
@@ -451,17 +573,18 @@ func TestRefreshToken(t *testing.T) {
 		assert.ErrorContains(t, gotErr, "access token service unavailable")
 	})
 
-	t.Run("Fails when IssueRefreshToken errors", func(t *testing.T) {
+	t.Run("Fails when GenerateRefreshToken errors", func(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 
 		userID := uuid.New()
 
-		mockTokenSrv.EXPECT().
-			ValidateRefreshToken(ctx, "old-opaque-token").
+		mockSessions.EXPECT().
+			GetDel(ctx, "old-opaque-token").
 			Return(userID, nil)
 
 		mockTokenSrv.EXPECT().
@@ -469,10 +592,10 @@ func TestRefreshToken(t *testing.T) {
 			Return("FAKE.ACCESS.TOKEN", nil)
 
 		mockTokenSrv.EXPECT().
-			IssueRefreshToken(ctx, userID).
+			GenerateRefreshToken().
 			Return("", errors.New("refresh token service unavailable"))
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		// act
@@ -483,17 +606,18 @@ func TestRefreshToken(t *testing.T) {
 		assert.ErrorContains(t, gotErr, "refresh token service unavailable")
 	})
 
-	t.Run("Succeeds even when InvalidateRefreshToken fails", func(t *testing.T) {
+	t.Run("Fails when session Set errors", func(t *testing.T) {
 		// arrange
 		ctx := t.Context()
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 
 		userID := uuid.New()
 
-		mockTokenSrv.EXPECT().
-			ValidateRefreshToken(ctx, "old-opaque-token").
+		mockSessions.EXPECT().
+			GetDel(ctx, "old-opaque-token").
 			Return(userID, nil)
 
 		mockTokenSrv.EXPECT().
@@ -501,23 +625,22 @@ func TestRefreshToken(t *testing.T) {
 			Return("FAKE.ACCESS.TOKEN", nil)
 
 		mockTokenSrv.EXPECT().
-			IssueRefreshToken(ctx, userID).
+			GenerateRefreshToken().
 			Return("FAKE-NEW-REFRESH-TOKEN", nil)
 
-		mockTokenSrv.EXPECT().
-			InvalidateRefreshToken(ctx, "old-opaque-token").
-			Return(errors.New("redis unavailable"))
+		mockSessions.EXPECT().
+			Set(ctx, "FAKE-NEW-REFRESH-TOKEN", userID).
+			Return(errors.New("session store unavailable"))
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		// act
 		gotTokenPair, gotErr := svc.RefreshToken(ctx, "old-opaque-token")
 
 		// assert
-		assert.NoError(t, gotErr, "invalidation failure should only be logged, not returned")
-		assert.Equal(t, "FAKE.ACCESS.TOKEN", gotTokenPair.AccessToken)
-		assert.Equal(t, "FAKE-NEW-REFRESH-TOKEN", gotTokenPair.RefreshToken)
+		assert.Nil(t, gotTokenPair)
+		assert.ErrorContains(t, gotErr, "session store unavailable")
 	})
 }
 
@@ -528,12 +651,13 @@ func TestLogout(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 
-		mockTokenSrv.EXPECT().
-			InvalidateRefreshToken(ctx, "old-opaque-token").
+		mockSessions.EXPECT().
+			Clear(ctx, "old-opaque-token").
 			Return(nil)
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		// act
@@ -549,12 +673,13 @@ func TestLogout(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 
-		mockTokenSrv.EXPECT().
-			InvalidateRefreshToken(ctx, "unknown-opaque-token").
+		mockSessions.EXPECT().
+			Clear(ctx, "unknown-opaque-token").
 			Return(auth.ErrRefreshTokenNotFound)
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		// act
@@ -570,12 +695,13 @@ func TestLogout(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockRepo := mocks.NewMockRepository(ctrl)
 		mockTokenSrv := mocks.NewMockTokenIssuer(ctrl)
+		mockSessions := mocks.NewMockSessionRepository(ctrl)
 
-		mockTokenSrv.EXPECT().
-			InvalidateRefreshToken(ctx, "old-opaque-token").
+		mockSessions.EXPECT().
+			Clear(ctx, "old-opaque-token").
 			Return(errors.New("redis unavailable"))
 
-		svc, err := auth.NewService(mockRepo, mockTokenSrv, zap.NewNop())
+		svc, err := auth.NewService(mockRepo, mockTokenSrv, mockSessions, zap.NewNop())
 		require.NoError(t, err, "failed to construct Service")
 
 		// act
