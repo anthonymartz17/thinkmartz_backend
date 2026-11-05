@@ -27,20 +27,22 @@ func NewRouter(p RouterParams) chi.Router {
 	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
 
-	r.Group(func(r chi.Router) {
-		p.AuthHandler.RegisterRefreshRoutes(r)
-	})
+	r.Route("/v1", func(r chi.Router) {
+		r.Group(func(r chi.Router) {
+			p.AuthHandler.RegisterRefreshRoutes(r)
+		})
 
-	r.Group(func(r chi.Router) {
-		p.AuthHandler.RegisterPublicRoutes(r)
-	})
+		r.Group(func(r chi.Router) {
+			p.AuthHandler.RegisterPublicRoutes(r)
+		})
 
-	r.Group(func(r chi.Router) {
-		r.Use(p.AuthMiddleware)
-		p.AuthHandler.RegisterProtectedRoutes(r)
-		p.PostHandler.RegisterProtectedRoutes(r)
-		p.FeedHandler.RegisterProtectedRoutes(r)
+		r.Group(func(r chi.Router) {
+			r.Use(p.AuthMiddleware)
+			p.AuthHandler.RegisterProtectedRoutes(r)
+			p.PostHandler.RegisterProtectedRoutes(r)
+			p.FeedHandler.RegisterProtectedRoutes(r)
 
+		})
 	})
 
 	return r

@@ -3,6 +3,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -36,7 +37,10 @@ func AuthMiddleware(jwtConfig config.JWTConfig) func(http.Handler) http.Handler 
 			token, err := jwt.ParseWithClaims(
 				accessToken,
 				claims,
-				func(_ *jwt.Token) (any, error) {
+				func(token *jwt.Token) (any, error) {
+					if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+						return nil, errors.New("unexpected signing method")
+					}
 					return []byte(jwtConfig.Secret), nil
 				},
 				jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
