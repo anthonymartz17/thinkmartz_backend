@@ -1,15 +1,11 @@
 package auth
 
-import (
-	"context"
+import "github.com/google/uuid"
 
-	"github.com/google/uuid"
-)
-
-// TokenIssuer defines the methods required a concrete token struct must provide to fullfill TokenService interface.
+// TokenIssuer defines the methods a concrete token issuer must provide:
+// pure JWT access-token signing and opaque refresh-token generation, with
+// no storage — see SessionRepository for refresh-token session storage.
 type TokenIssuer interface {
 	IssueAccessToken(userID uuid.UUID) (string, error)
-	IssueRefreshToken(ctx context.Context, userID uuid.UUID) (string, error)
-	ValidateRefreshToken(ctx context.Context, opaque string) (uuid.UUID, error)
-	InvalidateRefreshToken(ctx context.Context, token string) error
+	GenerateRefreshToken() (string, error)
 }

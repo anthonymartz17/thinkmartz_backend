@@ -1,17 +1,14 @@
 package auth
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/anthonymartz17/thinkmartz_backend/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 )
 
 // AccessTokenClaims defines the expected claims for the access token
@@ -20,19 +17,21 @@ type AccessTokenClaims struct {
 	jwt.RegisteredClaims
 }
 
-// TokenService handles JWT and Opaque refresh token signing and issuance.
+// validates TokenService implements TokenIssuer
+var _ TokenIssuer = (*TokenService)(nil)
+
+// TokenService handles pure JWT access-token signing and opaque
+// refresh-token generation. It holds no storage — see SessionRepository
+// for refresh-token session storage.
 type TokenService struct {
-	jwtConfig   config.JWTConfig
-	redisClient *redis.Client
+	jwtConfig config.JWTConfig
 }
 
 // NewTokenService builds and returns a new TokenService
-func NewTokenService(t config.JWTConfig, client *redis.Client) *TokenService {
+func NewTokenService(cfg config.JWTConfig) *TokenService {
 	return &TokenService{
-		jwtConfig:   t,
-		redisClient: client,
+		jwtConfig: cfg,
 	}
-
 }
 
 // IssueAccessToken generates, signs and return a new access token
@@ -54,27 +53,10 @@ func (t *TokenService) IssueAccessToken(userID uuid.UUID) (string, error) {
 	return signedToken, nil
 }
 
-// IssueRefreshToken generates a new opaque refresh token and stores it in
-// Redis keyed by the opaque token itself, with the userID as the value —
-// this allows a future refresh/rotate flow to look up the owning user
-// directly from the token presented in the cookie. Unlike keying by userID,
-// this does not invalidate any previously issued refresh token for the same
-// user, so multiple sessions can hold valid refresh
-// tokens concurrently.
-func (t *TokenService) IssueRefreshToken(ctx context.Context, userID uuid.UUID) (string, error) {
-
-	opaque, err := generateRefreshTokenValue()
-	if err != nil {
-		return "", fmt.Errorf("generate random token: %w", err)
-	}
-
-	key := refreshTokenKey(opaque)
-	err = t.redisClient.Set(ctx, key, userID.String(), t.jwtConfig.RefreshExpiry).Err()
-	if err != nil {
-		return "", fmt.Errorf("set refreshToken on redis: %w", err)
-	}
-
-	return opaque, nil
+// GenerateRefreshToken generates a new random opaque refresh-token value.
+// It does not store it — callers persist it via SessionRepository.
+func (t *TokenService) GenerateRefreshToken() (string, error) {
+	return generateRefreshTokenValue()
 }
 
 // generateRefreshTokenValue generates a random byte slice and encodes it to base64.URLEncoding
@@ -84,48 +66,4 @@ func generateRefreshTokenValue() (string, error) {
 		return "", fmt.Errorf("generate refresh token: %w", err)
 	}
 	return base64.URLEncoding.EncodeToString(b), nil
-}
-
-// ValidateRefreshToken fetches and returns refresh token from redis if exists otherwise returns ErrRefreshTokenNotFound
-func (t *TokenService) ValidateRefreshToken(ctx context.Context, opaque string) (uuid.UUID, error) {
-
-	key := refreshTokenKey(opaque)
-	val, err := t.redisClient.Get(ctx, key).Result()
-
-	if errors.Is(err, redis.Nil) {
-		return uuid.Nil, ErrRefreshTokenNotFound
-	}
-
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("get refresh token: %w", err)
-	}
-
-	userID, err := uuid.Parse(val)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("parse stored user id: %w", err)
-	}
-
-	return userID, nil
-
-}
-
-// InvalidateRefreshToken invalidates old token by deleting it from redis
-func (t *TokenService) InvalidateRefreshToken(ctx context.Context, token string) error {
-	key := refreshTokenKey(token)
-	deletedCount, err := t.redisClient.Del(ctx, key).Result()
-
-	if err != nil {
-		return fmt.Errorf("invalidate refresh token: %w", err)
-	}
-
-	if deletedCount == 0 {
-		return ErrRefreshTokenNotFound
-	}
-	return nil
-}
-
-// refreshTokenKey returns the Redis key under which a refresh token's owning
-// user ID is stored.
-func refreshTokenKey(opaque string) string {
-	return fmt.Sprintf("session:refresh_token:%s", opaque)
 }

@@ -17,16 +17,17 @@ var _ Authenticator = (*Service)(nil)
 // Service handles Auth business logic — user registration, login,
 // and JWT issuing — by orchestrating calls to a Repository.
 type Service struct {
-	repo   Repository
-	token  TokenIssuer
-	logger *zap.Logger
+	repo     Repository
+	token    TokenIssuer
+	sessions SessionRepository
+	logger   *zap.Logger
 	// dummyHash is a constant-cost stand-in compared against on a not-found
 	// user, so login timing doesn't reveal whether the email exists.
 	dummyHash []byte
 }
 
 // NewService creates a new Service
-func NewService(r Repository, t TokenIssuer, l *zap.Logger) (*Service, error) {
+func NewService(r Repository, t TokenIssuer, sessions SessionRepository, l *zap.Logger) (*Service, error) {
 
 	const dummyPassword = "timing-attack-guard"
 	dummyHash, err := bcrypt.GenerateFromPassword([]byte(dummyPassword), _bcryptCost)
@@ -38,6 +39,7 @@ func NewService(r Repository, t TokenIssuer, l *zap.Logger) (*Service, error) {
 	return &Service{
 		repo:      r,
 		token:     t,
+		sessions:  sessions,
 		logger:    l,
 		dummyHash: dummyHash,
 	}, nil
@@ -95,19 +97,25 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (*Response,
 		return nil, err
 	}
 
-	refreshToken, err := s.token.IssueRefreshToken(ctx, user.ID)
-	if err != nil {
-
+	rollback := func(cause error) error {
 		if delErr := s.repo.Delete(ctx, user.ID); delErr != nil {
 			s.logger.Error(
 				"user creation rollback",
 				zap.Error(delErr),
-				zap.NamedError("refresh_token_issue", err),
+				zap.NamedError("refresh_token_issue", cause),
 				zap.Stringer("userId", user.ID),
 			)
 		}
+		return fmt.Errorf("refresh token: %w", cause)
+	}
 
-		return nil, fmt.Errorf("refresh token: %w", err)
+	refreshToken, err := s.token.GenerateRefreshToken()
+	if err != nil {
+		return nil, rollback(err)
+	}
+
+	if err := s.sessions.Set(ctx, refreshToken, user.ID); err != nil {
+		return nil, rollback(err)
 	}
 
 	return &Response{
@@ -144,8 +152,12 @@ func (s *Service) Login(ctx context.Context, input LoginInput) (*Response, error
 		return nil, err
 	}
 
-	refreshToken, err := s.token.IssueRefreshToken(ctx, user.ID)
+	refreshToken, err := s.token.GenerateRefreshToken()
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.sessions.Set(ctx, refreshToken, user.ID); err != nil {
 		return nil, err
 	}
 
@@ -159,13 +171,12 @@ func (s *Service) Login(ctx context.Context, input LoginInput) (*Response, error
 
 }
 
-// RefreshToken validates received refresh token
-// issues both access and refresh token
-// invalidates old token
-// returns a TokenPair on success and error on failure.
+// RefreshToken atomically validates and invalidates the received refresh
+// token (so it can't be redeemed twice), issues a new access and refresh
+// token pair, and returns it on success.
 func (s *Service) RefreshToken(ctx context.Context, opaque string) (*TokenPair, error) {
 
-	userID, err := s.token.ValidateRefreshToken(ctx, opaque)
+	userID, err := s.sessions.GetDel(ctx, opaque)
 
 	if err != nil {
 		return nil, err
@@ -176,18 +187,15 @@ func (s *Service) RefreshToken(ctx context.Context, opaque string) (*TokenPair, 
 		return nil, err
 	}
 
-	refreshToken, err := s.token.IssueRefreshToken(ctx, userID)
+	refreshToken, err := s.token.GenerateRefreshToken()
 	if err != nil {
 		return nil, err
 	}
 
-	if err := s.token.InvalidateRefreshToken(ctx, opaque); err != nil {
-		s.logger.Warn(
-			"failed to invalidate old refresh token after rotation",
-			zap.Error(err),
-			zap.String("stale_opaque_prefix", opaque[:8]),
-		)
+	if err := s.sessions.Set(ctx, refreshToken, userID); err != nil {
+		return nil, err
 	}
+
 	return &TokenPair{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -197,6 +205,6 @@ func (s *Service) RefreshToken(ctx context.Context, opaque string) (*TokenPair, 
 // Logout ends the session associated with the given refresh token.
 // It is idempotent: invalidating an already-expired or unknown token is not an error.
 func (s *Service) Logout(ctx context.Context, token string) error {
-	return s.token.InvalidateRefreshToken(ctx, token)
+	return s.sessions.Clear(ctx, token)
 
 }
