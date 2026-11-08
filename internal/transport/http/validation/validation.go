@@ -16,10 +16,10 @@ type FieldError struct {
 	Message string `json:"message"`
 }
 
-// ErrorResponse is the JSON body returned when request
-// validation fails.
+// ErrorResponse is the JSON body returned when request validation fails,
+// using the same "error" key as response.ErrorResponse.
 type ErrorResponse struct {
-	Errors []FieldError `json:"errors"`
+	Errors []FieldError `json:"error"`
 }
 
 // ToErrorResponse maps validator field errors to the API's error shape.

@@ -50,6 +50,37 @@ func TestCreate(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
 	})
 
+	t.Run("content is whitespace only", func(t *testing.T) {
+		// arrange
+		h, _ := newTestHandler(t)
+
+		body := strings.NewReader(`{"content":"   "}`)
+		req := httptest.NewRequest(http.MethodPost, "/post", body)
+		w := httptest.NewRecorder()
+
+		// act
+		h.Create(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
+	})
+
+	t.Run("content is too long", func(t *testing.T) {
+		// arrange
+		h, _ := newTestHandler(t)
+
+		body, err := json.Marshal(map[string]string{"content": strings.Repeat("a", 281)})
+		require.NoError(t, err)
+		req := httptest.NewRequest(http.MethodPost, "/post", strings.NewReader(string(body)))
+		w := httptest.NewRecorder()
+
+		// act
+		h.Create(w, req)
+
+		// assert
+		assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
+	})
+
 	t.Run("unable to extract user id from context", func(t *testing.T) {
 		// arrange
 		h, _ := newTestHandler(t)
@@ -65,7 +96,7 @@ func TestCreate(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
 	})
 
-	t.Run("h.Service.Create fails", func(t *testing.T) {
+	t.Run("service.Create fails", func(t *testing.T) {
 		// arrange
 		h, mockSvc := newTestHandler(t)
 
