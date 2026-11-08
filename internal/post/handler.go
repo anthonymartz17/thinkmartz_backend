@@ -36,14 +36,14 @@ type updateRequest struct {
 
 // Handler is the post domain's HTTP layer.
 type Handler struct {
-	Service Service
+	service Service
 	logger  *zap.Logger
 }
 
 // NewHandler creates a new instance of Handler
 func NewHandler(m Service, logger *zap.Logger) *Handler {
 	return &Handler{
-		Service: m,
+		service: m,
 		logger:  logger,
 	}
 }
@@ -81,7 +81,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	post, err := h.Service.Create(ctx, userID, input.Content)
+	post, err := h.service.Create(ctx, userID, input.Content)
 
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, msgInternalServer)
@@ -103,7 +103,7 @@ func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	post, err := h.Service.GetByID(r.Context(), postID)
+	post, err := h.service.GetByID(r.Context(), postID)
 
 	if err != nil {
 		if errors.Is(err, ErrPostNotFound) {
@@ -167,7 +167,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		Content: req.Content,
 	}
 
-	post, err := h.Service.Update(ctx, input)
+	post, err := h.service.Update(ctx, input)
 
 	if err != nil {
 
@@ -210,7 +210,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		PostID: postID,
 		UserID: userID,
 	}
-	err = h.Service.Delete(r.Context(), input)
+	err = h.service.Delete(r.Context(), input)
 
 	if err != nil {
 		switch {
@@ -252,7 +252,7 @@ func (h *Handler) Like(w http.ResponseWriter, r *http.Request) {
 		PostID: postID,
 	}
 
-	switch err := h.Service.Like(r.Context(), like); {
+	switch err := h.service.Like(r.Context(), like); {
 	case errors.Is(err, ErrPostNotFound):
 		response.WriteError(w, http.StatusNotFound, msgPostNotFound)
 		return
@@ -290,7 +290,7 @@ func (h *Handler) DeleteLike(w http.ResponseWriter, r *http.Request) {
 		PostID: postID,
 	}
 
-	switch err := h.Service.DeleteLike(r.Context(), like); {
+	switch err := h.service.DeleteLike(r.Context(), like); {
 	case errors.Is(err, ErrPostNotFound):
 		response.WriteError(w, http.StatusNotFound, msgPostNotFound)
 		return

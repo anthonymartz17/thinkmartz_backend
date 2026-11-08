@@ -16,13 +16,13 @@ var _ Repository = (*PostgresRepository)(nil)
 
 // PostgresRepository provides a connection pool and methods to interact with database
 type PostgresRepository struct {
-	Pool *pgxpool.Pool
+	pool *pgxpool.Pool
 }
 
 // NewPostgresRepository creates and returns a new PostgresRepository
 func NewPostgresRepository(p *pgxpool.Pool) *PostgresRepository {
 	return &PostgresRepository{
-		Pool: p,
+		pool: p,
 	}
 }
 
@@ -34,7 +34,7 @@ func (r *PostgresRepository) Save(ctx context.Context, user *User) error {
 		VALUES ($1,$2,$3)
 		RETURNING id,created_at
 	`
-	err := r.Pool.QueryRow(
+	err := r.pool.QueryRow(
 		ctx,
 		query,
 		user.Email,
@@ -72,7 +72,7 @@ func (r *PostgresRepository) FindByEmail(ctx context.Context, email string) (*Us
 	WHERE email = $1
 	`
 
-	err := r.Pool.QueryRow(ctx, query, email).Scan(
+	err := r.pool.QueryRow(ctx, query, email).Scan(
 		&user.ID,
 		&user.Email,
 		&user.Username,
@@ -101,7 +101,7 @@ func (r *PostgresRepository) Delete(ctx context.Context, userID uuid.UUID) error
 	DELETE FROM users
 	WHERE id = $1
 	`
-	rowsDeleted, err := r.Pool.Exec(ctx, query, userID)
+	rowsDeleted, err := r.pool.Exec(ctx, query, userID)
 
 	if err != nil {
 		return fmt.Errorf("delete user: %w", err)

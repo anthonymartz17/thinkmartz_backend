@@ -24,20 +24,20 @@ var _ Reader = (*Service)(nil)
 // Service assembles a user's feed from the Redis cache and, on a cache
 // miss or for older pages, from Postgres.
 type Service struct {
-	cache     Cache
-	repo      Repository
-	logger    *zap.Logger
-	threshold int
+	cache                       Cache
+	repo                        Repository
+	logger                      *zap.Logger
+	celebrityFollowersThreshold int
 }
 
 // NewService builds a Service from its cache, repository, logger, and
 // celebrity follower-count threshold.
-func NewService(c Cache, r Repository, l *zap.Logger, t config.CelebrityFollowersThreshold) *Service {
+func NewService(c Cache, r Repository, l *zap.Logger, threshold config.CelebrityFollowersThreshold) *Service {
 	return &Service{
-		cache:     c,
-		repo:      r,
-		logger:    l,
-		threshold: int(t),
+		cache:                       c,
+		repo:                        r,
+		logger:                      l,
+		celebrityFollowersThreshold: int(threshold),
 	}
 }
 
@@ -64,7 +64,7 @@ func (s *Service) GetFeed(ctx context.Context, userID uuid.UUID, cursor *Cursor)
 		return nil, nil, err
 	}
 
-	posts, err := s.repo.ListWithCelebrityPosts(ctx, userID, ids, s.threshold, _feedPageSize+1)
+	posts, err := s.repo.ListWithCelebrityPosts(ctx, userID, ids, s.celebrityFollowersThreshold, _feedPageSize+1)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("list first feed page: %w", err)
@@ -83,7 +83,7 @@ func (s *Service) firstPageIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UU
 	}
 
 	if len(ids) == 0 {
-		entries, err := s.repo.ListNonCelebrityFeedEntries(ctx, userID, s.threshold, _feedMaxSize)
+		entries, err := s.repo.ListNonCelebrityFeedEntries(ctx, userID, s.celebrityFollowersThreshold, _feedMaxSize)
 
 		if err != nil {
 			return nil, fmt.Errorf("feed rebuild: %w", err)
