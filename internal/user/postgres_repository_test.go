@@ -30,6 +30,7 @@ func TestSaveFollow(t *testing.T) {
 		// assert
 		require.NoError(t, gotErr)
 		assert.Equal(t, 1, countFollows(ctx, t, pool, follower.ID, followee.ID))
+		assert.Equal(t, 1, followerCount(ctx, t, pool, followee.ID), "follows trigger should increment the followee's follower_count")
 	})
 
 	t.Run("saving an existing follow is a no-op", func(t *testing.T) {
@@ -48,6 +49,7 @@ func TestSaveFollow(t *testing.T) {
 		// assert
 		assert.NoError(t, gotErr, "re-saving an existing follow should succeed without duplicating it")
 		assert.Equal(t, 1, countFollows(ctx, t, pool, follower.ID, followee.ID))
+		assert.Equal(t, 1, followerCount(ctx, t, pool, followee.ID), "ON CONFLICT should skip the row, so the trigger must not fire a second time")
 	})
 
 	t.Run("fails when followee does not exist", func(t *testing.T) {
@@ -81,6 +83,22 @@ func TestSaveFollow(t *testing.T) {
 		assert.NotErrorIs(t, gotErr, user.ErrUserNotFound)
 	})
 
+	t.Run("fails when follower and followee are the same user", func(t *testing.T) {
+		// arrange
+		ctx := t.Context()
+		pool := newTestPool(t)
+		repo := user.NewPostgresRepository(pool)
+		u := newTestUser(ctx, t, pool)
+
+		// act
+		gotErr := repo.SaveFollow(ctx, user.Follow{FollowerID: u.ID, FolloweeID: u.ID})
+
+		// assert
+		// Pins the DB-level follows_no_self_follow CHECK constraint,
+		// independently of any service-layer check.
+		assert.Error(t, gotErr)
+	})
+
 	t.Run("context cancelled", func(t *testing.T) {
 		// arrange
 		ctx := t.Context()
@@ -108,6 +126,19 @@ func countFollows(ctx context.Context, t *testing.T, pool *pgxpool.Pool, followe
 		followerID, followeeID,
 	).Scan(&count)
 	require.NoError(t, err, "failed to count follows row")
+
+	return count
+}
+
+// followerCount reads users.follower_count, maintained by a trigger on the
+// follows table — used to confirm the trigger fired exactly once per real
+// insert, not once per SaveFollow call.
+func followerCount(ctx context.Context, t *testing.T, pool *pgxpool.Pool, userID uuid.UUID) int {
+	t.Helper()
+
+	var count int
+	err := pool.QueryRow(ctx, `SELECT follower_count FROM users WHERE id = $1`, userID).Scan(&count)
+	require.NoError(t, err, "failed to read follower_count")
 
 	return count
 }
